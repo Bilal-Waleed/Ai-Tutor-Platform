@@ -1,9 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import qa, recommend, code_debug, auth, sessions
+from routers import qa, recommend, code_debug, auth, sessions, quiz
 from db import engine
 from models.base import Base  # Import shared Base
-from models import User, Session, Message, CodeSession  # Import models to register with Base
+from models import User, Session, Message, CodeSession, Quiz, QuizQuestion, QuizAttempt, QuizSession  # Import models to register with Base
 from sqlalchemy import text
 
 # Create all tables automatically (includes foreign keys)
@@ -33,6 +33,7 @@ app.include_router(qa.router, prefix="/api")
 app.include_router(recommend.router, prefix="/api")
 app.include_router(code_debug.router, prefix="/api")
 app.include_router(sessions.router, prefix="/api")
+app.include_router(quiz.router, prefix="/api")
 
 if __name__ == "__main__":
     import uvicorn

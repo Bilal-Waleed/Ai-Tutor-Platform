@@ -8,11 +8,15 @@ import Login from './components/Login';
 import Sidebar from './components/Sidebar';
 import ChatHistory from './components/ChatHistory';
 import MessageBar from './components/MessageBar';
-import ProgressModal from './components/ProgressModal';
+import ProgressDashboard from './components/ProgressDashboard';
 import SubjectSelector from './components/SubjectSelector';
 import CodeDebug from './components/CodeDebug';
 import HistoryPanel from './components/HistoryPanel';
+import QuizSystem from './components/QuizSystem';
+import QuizHistory from './components/QuizHistory';
+import QuizAnalytics from './components/QuizAnalytics';
 import { toast } from 'react-toastify';
+import { Menu, X } from 'lucide-react';
 
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
@@ -28,6 +32,7 @@ function App() {
   const [responseLoading, setResponseLoading] = useState(false);
   const [currentSubject, setCurrentSubject] = useState('general');
   const [page, setPage] = useState(1);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const chatContainerRef = useRef(null);
 
   useEffect(() => {
@@ -209,28 +214,61 @@ function App() {
       <Routes>
         <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} clearLocalStorage={clearLocalStorage} />} />
         <Route path="/" element={isLoggedIn ? (
-          <div className="h-screen bg-gray-900 text-white flex">
-            <Sidebar 
-              setCurrentView={setCurrentView}
-              setShowSubjectModal={setShowSubjectModal}
-              setIsLoggedIn={setIsLoggedIn}
-              setShowProgressModal={setShowProgressModal}
-              setShowHistoryPanel={setShowHistoryPanel}
-              startNewChat={startNewChat}
-              currentView={currentView}
-            />
-            {showHistoryPanel && (
-              <HistoryPanel 
-                setCurrentSessionId={setCurrentSessionId} 
-                setShowHistoryPanel={setShowHistoryPanel} 
-                currentSessionId={currentSessionId}
-                setCurrentView={setCurrentView}
+          <div className="h-screen bg-gray-900 text-white flex relative">
+            {/* Mobile Sidebar Overlay */}
+            {sidebarOpen && (
+              <div 
+                className="fixed inset-0 bg-black bg-opacity-50 z-40 lg:hidden"
+                onClick={() => setSidebarOpen(false)}
               />
             )}
-            <div className="flex-1 flex flex-col">
+            
+            {/* Sidebar */}
+            <div className={`
+              fixed lg:static inset-y-0 left-0 z-50 lg:z-auto
+              transform transition-transform duration-300 ease-in-out
+              ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
+              lg:translate-x-0
+            `}>
+              <Sidebar 
+                setCurrentView={setCurrentView}
+                setShowSubjectModal={setShowSubjectModal}
+                setIsLoggedIn={setIsLoggedIn}
+                setShowProgressModal={setShowProgressModal}
+                setShowHistoryPanel={setShowHistoryPanel}
+                startNewChat={startNewChat}
+                currentView={currentView}
+                setSidebarOpen={setSidebarOpen}
+              />
+            </div>
+
+            {/* Mobile Header */}
+            <div className="lg:hidden fixed top-0 left-0 right-0 z-30 bg-gray-800 p-4 flex items-center justify-between border-b border-gray-700">
+              <button
+                onClick={() => setSidebarOpen(true)}
+                className="text-white hover:text-gray-300 transition-colors"
+              >
+                <Menu size={24} />
+              </button>
+              <h1 className="text-lg font-bold text-white">AI Tutor</h1>
+              <div className="w-6" /> {/* Spacer for centering */}
+            </div>
+
+            {/* Main Content */}
+            <div className="flex-1 flex flex-col lg:ml-0 pt-16 lg:pt-0">
+              {showHistoryPanel && (
+                <HistoryPanel 
+                  setCurrentSessionId={setCurrentSessionId} 
+                  setShowHistoryPanel={setShowHistoryPanel} 
+                  currentSessionId={currentSessionId}
+                  setCurrentView={setCurrentView}
+                />
+              )}
+              
               {currentView === 'chat' && (
                 <>
-                  <header className="p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-xl relative shadow-lg">
+                  {/* Desktop Header */}
+                  <header className="hidden lg:block p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-xl relative shadow-lg">
                     <div className="flex items-center justify-between">
                       <div>
                         <h1 className="text-xl font-bold">AI Tutor Chat</h1>
@@ -245,6 +283,21 @@ function App() {
                       </div>
                     </div>
                   </header>
+
+                  {/* Mobile Chat Header */}
+                  <div className="lg:hidden bg-gray-800 p-4 border-b border-gray-700">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-lg font-semibold text-white">{sessionName}</h2>
+                        <p className="text-sm text-gray-400">{currentSubject || 'No Subject Selected'}</p>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                        <span className="text-xs text-gray-400">Online</span>
+                      </div>
+                    </div>
+                  </div>
+
                   <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-900 custom-scroll">
                     <ChatHistory messages={messages} />
                     {responseLoading && (
@@ -262,14 +315,18 @@ function App() {
                 </>
               )}
               {currentView === 'code' && <CodeDebug />}
+              {currentView === 'quiz' && <QuizSystem setCurrentView={setCurrentView} />}
+              {currentView === 'quiz-history' && <QuizHistory setCurrentView={setCurrentView} />}
+              {currentView === 'quiz-analytics' && <QuizAnalytics setCurrentView={setCurrentView} />}
             </div>
+            
             {showSubjectModal && (
               <SubjectSelector 
                 setShowSubjectModal={setShowSubjectModal} 
                 updateCurrentSubject={updateCurrentSubject} 
               />
             )}
-            {showProgressModal && <ProgressModal setShowProgressModal={setShowProgressModal} />}
+            {showProgressModal && <ProgressDashboard setShowProgressModal={setShowProgressModal} setCurrentView={setCurrentView} />}
             <ToastProvider />
           </div>
         ) : <Navigate to="/login" />} />

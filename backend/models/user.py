@@ -15,4 +15,5 @@ class User(Base):
     
     # Relationships
     code_sessions = relationship("CodeSession", back_populates="user", cascade="all, delete-orphan")
+    quizzes = relationship("Quiz", back_populates="user", cascade="all, delete-orphan")
     

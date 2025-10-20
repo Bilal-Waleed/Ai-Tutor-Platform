@@ -11,7 +11,7 @@ const SubjectSelector = ({ setShowSubjectModal, updateCurrentSubject }) => {
       return;
     }
     try {
-      await api.post('/api/auth/select-subject', { subject: subject.toLowerCase() });
+      await api.post('/api/auth/select-subject', { subject: subject });
       
       const userRes = await api.get('/api/auth/me');
       const newSubject = userRes.data.current_subject;
@@ -35,10 +35,10 @@ const SubjectSelector = ({ setShowSubjectModal, updateCurrentSubject }) => {
           className="w-full mb-4 p-3 bg-gray-700 rounded-md text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           <option value="">Choose one</option>
-          <option value="Math">Math</option>
-          <option value="Coding">Coding</option>
-          <option value="Ielts">IELTS</option>
-          <option value="Physics">Physics</option>
+          <option value="math">Math</option>
+          <option value="coding">Coding</option>
+          <option value="ielts">IELTS</option>
+          <option value="physics">Physics</option>
         </select>
         <div className="flex justify-between">
           <button onClick={handleSelect} className="bg-blue-500 hover:bg-blue-600 p-3 rounded-md text-white flex-1 mr-2 transition">Set</button>

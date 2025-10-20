@@ -20,16 +20,16 @@ const MessageBar = ({ input, setInput, sendMessage }) => {
   };
 
   return (
-    <div className="p-4 bg-gray-800 border-t border-gray-700">
-      <div className="flex items-end space-x-3">
+    <div className="p-2 lg:p-4 bg-gray-800 border-t border-gray-700">
+      <div className="flex items-end space-x-2 lg:space-x-3">
         {/* Attachment Button */}
         <button className="p-2 text-gray-400 hover:text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
-          <Paperclip size={20} />
+          <Paperclip size={18} className="lg:w-5 lg:h-5" />
         </button>
 
         {/* Voice Input Button */}
         <button className="p-2 text-gray-400 hover:text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
-          <Mic size={20} />
+          <Mic size={18} className="lg:w-5 lg:h-5" />
         </button>
 
         {/* Text Input */}
@@ -41,12 +41,12 @@ const MessageBar = ({ input, setInput, sendMessage }) => {
               setIsTyping(e.target.value.length > 0);
             }}
             onKeyPress={handleKeyPress}
-            className="w-full p-3 bg-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[44px] max-h-32"
-            placeholder="Type your message... (Press Enter to send, Shift+Enter for new line)"
+            className="w-full p-2 lg:p-3 bg-gray-700 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none min-h-[40px] lg:min-h-[44px] max-h-32 text-sm lg:text-base"
+            placeholder="Type your message..."
             rows={1}
             style={{
               height: 'auto',
-              minHeight: '44px',
+              minHeight: '40px',
               maxHeight: '128px'
             }}
             onInput={(e) => {
@@ -54,23 +54,21 @@ const MessageBar = ({ input, setInput, sendMessage }) => {
               e.target.style.height = Math.min(e.target.scrollHeight, 128) + 'px';
             }}
           />
-          
-          {/* Removed on-input typing label per request */}
         </div>
 
         {/* Send Button */}
         <button 
           onClick={handleSend}
           disabled={!input.trim()}
-          className="p-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-500 disabled:to-gray-600 rounded-lg text-white transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-blue-500/25"
+          className="p-2 lg:p-3 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 disabled:from-gray-500 disabled:to-gray-600 rounded-lg text-white transition-all duration-200 flex items-center justify-center shadow-lg hover:shadow-blue-500/25"
         >
-          <Send size={20} />
+          <Send size={18} className="lg:w-5 lg:h-5" />
         </button>
       </div>
 
       {/* Helper Text */}
-      <div className="mt-2 text-xs text-gray-500 text-center">
-        Press Enter to send • Shift+Enter for new line • AI will help you learn!
+      <div className="mt-1 lg:mt-2 text-xs text-gray-500 text-center">
+        Press Enter to send • Shift+Enter for new line
       </div>
     </div>
   );

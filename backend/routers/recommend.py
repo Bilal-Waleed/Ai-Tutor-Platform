@@ -56,20 +56,57 @@ def get_recommendations(
 
     if not progress:
         return {
-            "recommendations": "Start with basics. Try a quiz in your subject.",
+            "recommendations": "Welcome! Start your learning journey by selecting a subject and asking questions. Try asking 'What is a variable in Python?' or 'Explain calculus basics'.",
             "progress": progress,
         }
 
+    # Find weakest subject
     low_sub = min(progress, key=progress.get)
-    weak_areas = [
-        h.get("prompt", "")
-        for h in history
-        if isinstance(h, dict) and "wrong" in h.get("response", "").lower()
-    ]
-    rec = (
-        f"Focus on {low_sub} (score: {progress[low_sub]}%). "
-        f"Suggestions: {', '.join(weak_areas[:3]) or 'Quiz on basics'}."
-    )
+    low_score = progress[low_sub]
+    
+    # Generate subject-specific recommendations
+    subject_recommendations = {
+        "coding": [
+            "Practice Python basics with simple programs",
+            "Try debugging some code examples",
+            "Learn about variables, functions, and loops",
+            "Ask about data structures and algorithms",
+            "Take a coding quiz to test your knowledge"
+        ],
+        "math": [
+            "Practice algebra and calculus problems",
+            "Learn about derivatives and integrals",
+            "Try solving quadratic equations",
+            "Ask about mathematical concepts step by step",
+            "Take a math quiz to assess your skills"
+        ],
+        "ielts": [
+            "Practice writing essays on common topics",
+            "Improve vocabulary and grammar",
+            "Try speaking practice questions",
+            "Learn about IELTS test format and tips",
+            "Take an IELTS quiz to practice test questions"
+        ],
+        "physics": [
+            "Learn Newton's laws of motion",
+            "Practice kinetic energy calculations",
+            "Understand basic physics concepts",
+            "Ask about formulas and their applications",
+            "Take a physics quiz to test your understanding"
+        ]
+    }
+    
+    # Get recommendations for weakest subject
+    subject_suggestions = subject_recommendations.get(low_sub, ["Continue practicing and asking questions"])
+    
+    # Generate personalized recommendation
+    if low_score < 50:
+        rec = f"Your {low_sub} needs more practice (score: {low_score:.1f}%). Try: {subject_suggestions[0]}"
+    elif low_score < 70:
+        rec = f"Good progress in {low_sub} (score: {low_score:.1f}%). Next: {subject_suggestions[1]}"
+    else:
+        rec = f"Excellent work in {low_sub} (score: {low_score:.1f}%)! Try: {subject_suggestions[2]}"
+    
     return {"recommendations": rec, "progress": progress}
 
 

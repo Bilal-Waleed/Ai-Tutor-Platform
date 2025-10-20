@@ -1,5 +1,6 @@
-// src/components/HistoryPanel.jsx (Unchanged, but for completeness – calls loadMessages on switch)
+// src/components/HistoryPanel.jsx (Enhanced with React Icons and fixed layout)
 import { useState, useEffect } from 'react';
+import { MdClose, MdMessage, MdCalendarToday, MdMenuBook, MdAccessTime, MdCode, MdCalculate, MdEdit, MdScience } from 'react-icons/md';
 import api from '../services/api';
 import { toast } from 'react-toastify';
 
@@ -34,32 +35,138 @@ const HistoryPanel = ({ setCurrentSessionId, setShowHistoryPanel, currentSession
     toast.success('Session loaded!');
   };
 
+  const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now - date);
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) return 'Today';
+    if (diffDays === 2) return 'Yesterday';
+    if (diffDays <= 7) return `${diffDays} days ago`;
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
+  const getSubjectIcon = (subject) => {
+    switch (subject) {
+      case 'coding': return <MdCode className="text-green-400" />;
+      case 'math': return <MdCalculate className="text-blue-400" />;
+      case 'ielts': return <MdEdit className="text-purple-400" />;
+      case 'physics': return <MdScience className="text-orange-400" />;
+      default: return <MdMenuBook className="text-gray-400" />;
+    }
+  };
+
+  const getSubjectColor = (subject) => {
+    switch (subject) {
+      case 'coding': return 'from-green-500 to-green-600';
+      case 'math': return 'from-blue-500 to-blue-600';
+      case 'ielts': return 'from-purple-500 to-purple-600';
+      case 'physics': return 'from-orange-500 to-orange-600';
+      default: return 'from-gray-500 to-gray-600';
+    }
+  };
+
   return (
-    <div className="absolute left-16 top-0 h-screen w-64 bg-gray-800 p-4 overflow-y-auto custom-scroll shadow-lg z-50">
-      <h3 className="text-white text-lg mb-4">Chat History</h3>
-      {loading && <p className="text-gray-400">Loading sessions...</p>}
-      {error && <p className="text-red-400">{error}</p>}
-      {!loading && !error && sessions.length === 0 ? (
-        <p className="text-gray-400">No sessions yet</p>
-      ) : (
-        <ul className="space-y-2">
-          {sessions.map(s => (
-            <li 
-              key={s.id} 
-              onClick={() => loadSession(s.id)} 
-              className={`cursor-pointer p-2 border-b border-gray-700 ${s.id === currentSessionId ? 'bg-blue-600 text-white' : 'text-blue-400 hover:text-blue-300'}`}
-            >
-              {s.name || 'Untitled'} ({s.subject}) - {new Date(s.created_at).toLocaleDateString()}
-            </li>
-          ))}
-        </ul>
-      )}
-      <button 
-        onClick={() => setShowHistoryPanel(false)} 
-        className="mt-4 text-gray-400 hover:text-white"
-      >
-        Close
-      </button>
+    <div className="fixed inset-0 lg:absolute lg:left-80 lg:top-0 lg:h-screen lg:w-80 bg-gray-900/50 lg:bg-gray-800 p-4 lg:p-6 overflow-y-auto custom-scroll shadow-xl z-50">
+      <div className="bg-gray-800 lg:bg-transparent rounded-xl lg:rounded-none p-4 lg:p-0">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center">
+            <MdMessage className="w-6 h-6 text-blue-400 mr-3" />
+            <h3 className="text-white text-xl font-bold">Chat History</h3>
+          </div>
+          <button 
+            onClick={() => setShowHistoryPanel(false)} 
+            className="text-gray-400 hover:text-white transition-colors p-2 hover:bg-gray-700 rounded-lg"
+          >
+            <MdClose size={20} />
+          </button>
+        </div>
+
+        {/* Stats */}
+        <div className="mb-6 p-4 bg-gradient-to-r from-blue-600/20 to-purple-600/20 rounded-lg border border-blue-500/30">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-blue-300 text-sm font-medium">Total Sessions</p>
+              <p className="text-white text-2xl font-bold">{sessions.length}</p>
+            </div>
+            <MdMenuBook className="w-8 h-8 text-blue-400" />
+          </div>
+        </div>
+
+        {/* Sessions List */}
+        <div className="space-y-3">
+          {loading && (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div>
+              <span className="ml-3 text-gray-400">Loading sessions...</span>
+            </div>
+          )}
+          
+          {error && (
+            <div className="p-4 bg-red-600/20 border border-red-500/30 rounded-lg">
+              <p className="text-red-400 text-sm">{error}</p>
+            </div>
+          )}
+          
+          {!loading && !error && sessions.length === 0 ? (
+            <div className="text-center py-8">
+              <div className="text-6xl mb-4">📝</div>
+              <p className="text-gray-400 text-lg mb-2">No sessions yet</p>
+              <p className="text-gray-500 text-sm">Start chatting to create your first session!</p>
+            </div>
+          ) : (
+            sessions.map(session => (
+              <div 
+                key={session.id} 
+                onClick={() => loadSession(session.id)} 
+                className={`cursor-pointer p-3 lg:p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${
+                  session.id === currentSessionId 
+                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 border-blue-400 text-white shadow-lg' 
+                    : 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500 text-gray-300'
+                }`}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center flex-1 min-w-0">
+                    <div className="mr-3 flex-shrink-0">
+                      {getSubjectIcon(session.subject)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-semibold text-sm lg:text-base truncate" title={session.name || 'Untitled'}>
+                        {session.name || 'Untitled Session'}
+                      </h4>
+                      <div className="flex items-center text-xs text-gray-400 mt-1">
+                        <MdCalendarToday size={12} className="mr-1 flex-shrink-0" />
+                        <span className="truncate">{formatDate(session.created_at)}</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`px-2 py-1 rounded-full text-xs font-medium bg-gradient-to-r ${getSubjectColor(session.subject)} text-white flex-shrink-0 ml-2`}>
+                    {session.subject}
+                  </div>
+                </div>
+                
+                <div className="flex items-center justify-between text-xs">
+                  <div className="flex items-center text-gray-400">
+                    <MdAccessTime size={12} className="mr-1" />
+                    {new Date(session.created_at).toLocaleTimeString('en-US', { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </div>
+                  {session.id === currentSessionId && (
+                    <div className="flex items-center text-blue-200">
+                      <div className="w-2 h-2 bg-blue-200 rounded-full mr-1"></div>
+                      Active
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+      </div>
     </div>
   );
 };

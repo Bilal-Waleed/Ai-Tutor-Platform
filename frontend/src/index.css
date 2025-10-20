@@ -34,6 +34,29 @@
 	scrollbar-color: #3b82f6 #374151; /* blue-500 on gray-700 */
 }
 
+/* Desktop scroll optimization */
+@media (min-width: 1024px) {
+	.custom-scroll {
+		scroll-behavior: smooth;
+		overflow-y: auto;
+		overflow-x: hidden;
+	}
+	
+	/* Ensure desktop history panel scrolls properly */
+	.lg\:block .custom-scroll {
+		max-height: calc(100vh - 200px);
+		overflow-y: auto;
+	}
+	
+	/* Desktop history scroll specific styling */
+	.desktop-history-scroll {
+		height: calc(100vh - 120px);
+		max-height: calc(100vh - 120px);
+		overflow-y: auto;
+		overflow-x: hidden;
+	}
+}
+
 /* Typing dots animation */
 .dots::after {
 	content: "";
@@ -63,4 +86,66 @@
 	-webkit-line-clamp: 3;
 	-webkit-box-orient: vertical;
 	overflow: hidden;
+}
+
+/* Mobile responsive utilities */
+@media (max-width: 640px) {
+	/* Smaller scrollbar for mobile */
+	.custom-scroll::-webkit-scrollbar {
+		width: 8px;
+		height: 8px;
+	}
+	
+	.custom-scroll::-webkit-scrollbar-thumb {
+		min-height: 20px;
+	}
+	
+	/* Mobile scroll optimization */
+	.mobile-scroll {
+		-webkit-overflow-scrolling: touch;
+		overflow-scrolling: touch;
+		scroll-behavior: smooth;
+	}
+	
+	/* Ensure proper mobile scrolling */
+	.mobile-scroll-container {
+		height: 100vh;
+		overflow-y: auto;
+		-webkit-overflow-scrolling: touch;
+	}
+	
+	/* Better touch scrolling for mobile */
+	.custom-scroll {
+		-webkit-overflow-scrolling: touch;
+		scroll-behavior: smooth;
+	}
+	
+	/* Prevent horizontal scroll on mobile */
+	* {
+		overflow-x: hidden;
+	}
+	
+	/* Better mobile spacing */
+	.mobile-safe-padding {
+		padding-left: 16px;
+		padding-right: 16px;
+	}
+}
+
+/* Touch-friendly buttons */
+@media (max-width: 768px) {
+	button, .btn {
+		min-height: 44px;
+		min-width: 44px;
+	}
+}
+
+/* Safe area for mobile devices */
+@supports (padding: max(0px)) {
+	.mobile-safe-area {
+		padding-left: max(16px, env(safe-area-inset-left));
+		padding-right: max(16px, env(safe-area-inset-right));
+		padding-top: max(16px, env(safe-area-inset-top));
+		padding-bottom: max(16px, env(safe-area-inset-bottom));
+	}
 }
