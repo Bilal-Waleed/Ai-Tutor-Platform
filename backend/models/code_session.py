@@ -10,7 +10,8 @@ class CodeSession(Base):
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
     name = Column(String, default="Code Debug Session")
     code_input = Column(Text, nullable=False)  # User's original code
-    response = Column(Text, nullable=False)   # LLM debug response
+    response = Column(Text, nullable=False)   # LLM debug response (English)
+    response_roman = Column(Text, nullable=True)  # Roman Urdu translation
     language = Column(String, default="python")
     created_at = Column(DateTime, default=datetime.utcnow)
 

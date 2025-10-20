@@ -4,9 +4,20 @@ from routers import qa, recommend, code_debug, auth, sessions
 from db import engine
 from models.base import Base  # Import shared Base
 from models import User, Session, Message, CodeSession  # Import models to register with Base
+from sqlalchemy import text
 
 # Create all tables automatically (includes foreign keys)
 Base.metadata.create_all(bind=engine)
+
+# Ensure missing columns exist (lightweight migration for 'users.history')
+try:
+    with engine.connect() as conn:
+        conn.execute(text("ALTER TABLE users ADD COLUMN IF NOT EXISTS history JSON DEFAULT '[]'::json"))
+        conn.execute(text("ALTER TABLE code_sessions ADD COLUMN IF NOT EXISTS response_roman TEXT"))
+        conn.commit()
+except Exception:
+    # Safe to ignore on engines that don't support IF NOT EXISTS or during tests
+    pass
 
 app = FastAPI(title="Revotic Tutor")
 app.add_middleware(

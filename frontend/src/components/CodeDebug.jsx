@@ -108,9 +108,9 @@ const CodeDebug = () => {
   };
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-900 text-white">
+    <div className="h-full flex flex-col bg-gray-900 text-white">
       {/* Header */}
-      <header className="p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold flex justify-between items-center">
+      <header className="flex-shrink-0 p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold flex justify-between items-center">
         <div>
           <h1 className="text-xl">Code Debugger</h1>
           <p className="text-sm opacity-90">Analyze, debug, and improve your code</p>
@@ -123,48 +123,68 @@ const CodeDebug = () => {
         </button>
       </header>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* History Panel */}
         {showHistory && (
-          <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col">
-            <div className="p-4 border-b border-gray-700">
-              <h3 className="text-lg font-semibold">Code Sessions</h3>
+          <div className="w-80 bg-gray-800 border-r border-gray-700 flex flex-col h-full">
+            {/* Header - Fixed */}
+            <div className="flex-shrink-0 p-4 border-b border-gray-700 bg-gray-800">
+              <h3 className="text-lg font-semibold text-white">Code Sessions</h3>
               <p className="text-sm text-gray-400">{codeSessions.length} sessions</p>
             </div>
-            <div className="flex-1 overflow-y-auto">
+            
+            {/* Scrollable Content - Takes remaining space */}
+            <div className="flex-1 overflow-y-auto overflow-x-hidden custom-scroll bg-gray-800">
               {codeSessions.length === 0 ? (
-                <div className="p-4 text-center text-gray-400">
-                  <p>No code sessions yet</p>
+                <div className="p-6 text-center text-gray-400">
+                  <div className="text-4xl mb-3">📝</div>
+                  <p className="text-lg mb-2">No code sessions yet</p>
                   <p className="text-sm">Start debugging to create your first session!</p>
                 </div>
               ) : (
-                <div className="space-y-2 p-2">
+                <div className="p-3 space-y-3 pb-6">
                   {codeSessions.map((session) => (
                     <div
                       key={session.id}
-                      className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                      className={`relative p-4 rounded-xl cursor-pointer transition-all duration-200 border-2 min-h-[120px] ${
                         selectedSession?.id === session.id
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-700 hover:bg-gray-600'
+                          ? 'bg-blue-600 border-blue-500 text-white shadow-lg'
+                          : 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500'
                       }`}
                       onClick={() => loadSession(session.id)}
                     >
-                      <div className="flex justify-between items-start">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-sm">{session.name}</h4>
-                          <p className="text-xs text-gray-300 mt-1">{session.language}</p>
-                          <p className="text-xs text-gray-400 mt-1">{session.code_preview}</p>
-                          <p className="text-xs text-gray-500 mt-1">{formatDate(session.created_at)}</p>
+                      {/* Delete Button */}
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteSession(session.id);
+                        }}
+                        className="absolute top-2 right-2 p-1 rounded-full hover:bg-red-500 hover:text-white transition-colors text-red-400 hover:text-white z-10"
+                        title="Delete session"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                      
+                      {/* Session Content */}
+                      <div className="pr-8">
+                        <h4 className="font-semibold text-sm mb-2 truncate" title={session.name}>
+                          {session.name}
+                        </h4>
+                        
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="px-2 py-1 bg-gray-600 text-xs rounded-full">
+                            {session.language}
+                          </span>
+                          <span className="text-xs text-gray-400">
+                            {formatDate(session.created_at)}
+                          </span>
                         </div>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            deleteSession(session.id);
-                          }}
-                          className="text-red-400 hover:text-red-300 text-xs px-2 py-1 rounded"
-                        >
-                          ×
-                        </button>
+                        
+                        <p className="text-xs text-gray-300 line-clamp-3 break-words" title={session.code_preview}>
+                          {session.code_preview}
+                        </p>
                       </div>
                     </div>
                   ))}
@@ -175,9 +195,9 @@ const CodeDebug = () => {
         )}
 
         {/* Main Content */}
-        <div className="flex-1 flex">
+        <div className="flex-1 flex min-h-0">
           {/* Editor Panel */}
-          <div className="w-1/2 p-4 border-r border-gray-700 flex flex-col">
+          <div className="w-1/2 p-4 border-r border-gray-700 flex flex-col min-h-0">
             <div className="mb-4 flex items-center space-x-4">
               <select 
                 value={language} 
@@ -238,7 +258,7 @@ const CodeDebug = () => {
           </div>
 
           {/* Response Panel */}
-          <div className="w-1/2 p-4 flex flex-col">
+          <div className="w-1/2 p-4 flex flex-col min-h-0">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-white">Analysis & Explanation</h3>
               <div className="flex items-center space-x-2">

@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional
-from services.llm_service import LLMSService
+from services.gemini_service import GeminiService
 from routers.auth import get_current_user
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -14,7 +14,7 @@ import re
 router = APIRouter(prefix="/code")
 
 def get_llm():
-    return LLMSService()
+    return GeminiService()
 
 class CodeBody(BaseModel):
     code: str
@@ -108,7 +108,7 @@ def generate_session_name(code: str, language: str) -> str:
         return f"{language.title()} Code: {' '.join(words)}"
 
 @router.post("/debug", response_model=CodeSessionResponse)
-def debug_code(body: CodeBody, llm: LLMSService = Depends(get_llm), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def debug_code(body: CodeBody, llm: GeminiService = Depends(get_llm), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     try:
         if not body.code.strip():
             raise HTTPException(status_code=400, detail="Code cannot be empty")
@@ -116,81 +116,19 @@ def debug_code(body: CodeBody, llm: LLMSService = Depends(get_llm), db: Session 
         # Generate session name
         session_name = generate_session_name(body.code, body.language)
         
-        # Try fast heuristic analysis first
-        quick = analyze_code_quick(body.language, body.code)
-
-        # Analyze code with LLM
-        analysis_prompt = f"""
-        You are a senior engineer. Analyze the user's input below. If it's valid {body.language} code, do a structured code review. If it's not code (e.g., natural-language questions), clearly state that it's not code, then provide concise, actionable guidance relevant to {body.language}.
-
-        Respond in this exact structured format:
-
-        Summary:
-        - 2-3 bullet points summarizing what the code does OR, if not code, what the user is asking.
-
-        Issues (with line numbers if code):
-        - [Line X] Description of issue and why it's a problem
-        - If not code, list key points the user should know instead of issues.
-
-        Fixes or Next Steps:
-        - For each issue, propose a fix (if code). If not code, list clear next steps and resources.
-
-        Corrected Code (only include if changes are needed and input was code):
-        ```{body.language}
-        ... full corrected snippet ...
-        ```
-
-        Best Practices & Improvements:
-        - 2-5 bullets for readability, performance, or learning roadmap.
-
-        User Input (preserve indentation and detect syntax accurately):
-        ```
-        {body.code}
-        ```
-        """
-        
-        # Try to get LLM analysis but don't fail the entire request if it errors
+        # Analyze code with Gemini
         try:
-            llm_response = quick if quick else llm.generate_response(analysis_prompt, "coding")
+            analysis_result = llm.analyze_code(body.code, body.language)
+            llm_response = analysis_result["analysis"]
+            response_roman = analysis_result["roman_analysis"]
+            has_error = analysis_result["has_error"]
+            error_message = None
         except Exception as llm_err:
-            # Fallback response so we still persist the session and show something to the user
-            llm_response = (
-                "LLM analysis temporarily unavailable. Saved your code session. "
-                f"Error: {str(llm_err)}"
-            )
-        
-        # Check for syntax errors (basic check)
-        has_error = False
-        error_message = None
-        
-        try:
-            if body.language == "python":
-                compile(body.code, '<string>', 'exec')
-            elif body.language == "javascript":
-                # Basic JS syntax check - could be enhanced
-                if body.code.count('{') != body.code.count('}'):
-                    has_error = True
-                    error_message = "Mismatched braces"
-        except SyntaxError as e:
+            # Fallback response
+            llm_response = f"Code analysis temporarily unavailable. Error: {str(llm_err)}"
+            response_roman = f"Code analysis temporarily unavailable. Error: {str(llm_err)}"
             has_error = True
-            error_message = str(e)
-        except Exception as e:
-            has_error = True
-            error_message = f"Compilation error: {str(e)}"
-        
-        # Optionally generate Roman Urdu version of the explanation (do not block save)
-        response_roman = None
-        try:
-            roman_prompt = (
-                "Translate the following explanation into Roman Urdu using Latin letters ONLY. "
-                "Do NOT use Urdu or Hindi scripts. Preserve all code blocks exactly as-is (between triple backticks). "
-                "Translate only the prose/explanations.\n\n"
-                f"{llm_response}"
-            )
-            # Force Roman Urdu output irrespective of input language detection
-            response_roman = llm.generate_response(roman_prompt, "coding", language="Roman Urdu (Latin script)")
-        except Exception:
-            response_roman = None
+            error_message = str(llm_err)
 
         # Create code session
         code_session = CodeSession(
@@ -198,6 +136,7 @@ def debug_code(body: CodeBody, llm: LLMSService = Depends(get_llm), db: Session 
             name=session_name,
             code_input=body.code,
             response=llm_response,
+            response_roman=response_roman,
             language=body.language,
             created_at=datetime.utcnow()
         )
@@ -254,8 +193,8 @@ def get_code_session(session_id: int, db: Session = Depends(get_db), current_use
         "language": session.language,
         "code_input": session.code_input,
         "response": session.response,
-        # Do not compute Roman on GET to avoid slow loads; compute only at create
-        "response_roman": None,
+        # Return stored Roman Urdu (computed at create time)
+        "response_roman": session.response_roman,
         "created_at": session.created_at.isoformat()
     }
 

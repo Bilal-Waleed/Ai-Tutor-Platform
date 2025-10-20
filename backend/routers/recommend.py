@@ -14,7 +14,7 @@ from sqlalchemy.orm import Session
 from db import get_db
 from models.user import User
 from routers.auth import get_current_user
-from services.llm_service import LLMSService
+from services.gemini_service import GeminiService
 
 router = APIRouter(prefix="/recommend")
 
@@ -22,8 +22,8 @@ router = APIRouter(prefix="/recommend")
 # Dependency helper
 # ------------------------------------------------------------------
 def get_llm_service():
-    """Return a fresh (or cached) LLMSService instance."""
-    return LLMSService()
+    """Return a fresh (or cached) GeminiService instance."""
+    return GeminiService()
 
 # ------------------------------------------------------------------
 # Pydantic models
@@ -90,7 +90,7 @@ def update_progress(
     body: ProgressUpdate,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
-    llm: LLMSService = Depends(get_llm_service),
+    llm: GeminiService = Depends(get_llm_service),
 ):
     """
     Score a user answer against the correct answer using the LLM,

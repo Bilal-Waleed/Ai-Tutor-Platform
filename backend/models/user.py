@@ -10,6 +10,8 @@ class User(Base):
     password = Column(String)  # Hashed
     current_subject = Column(String, default="general")
     progress = Column(JSON, default={})
+    # Lightweight chat history for recommendations and quick context
+    history = Column(JSON, default=[])
     
     # Relationships
     code_sessions = relationship("CodeSession", back_populates="user", cascade="all, delete-orphan")

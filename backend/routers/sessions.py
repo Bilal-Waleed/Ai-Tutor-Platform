@@ -5,13 +5,13 @@ from sqlalchemy import desc
 from db import get_db
 from models import User, Session as DBSession, Message
 from routers.auth import get_current_user
-from services.llm_service import LLMSService
+from services.gemini_service import GeminiService
 from datetime import datetime
 
 router = APIRouter(prefix="/sessions")
 
 def get_llm_service():
-    return LLMSService()
+    return GeminiService()
 
 class SessionCreate(BaseModel):
     subject: str
@@ -69,7 +69,7 @@ def get_messages(session_id: int, page: int = 1, limit: int = 10, db: Session = 
     return [{"role": m.role, "content": m.content, "timestamp": m.timestamp} for m in messages]
 
 @router.post("/add-message")
-def add_message(body: MessageAdd, llm: LLMSService = Depends(get_llm_service), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
+def add_message(body: MessageAdd, llm: GeminiService = Depends(get_llm_service), db: Session = Depends(get_db), current_user: User = Depends(get_current_user)):
     try:
         session = db.query(DBSession).filter(DBSession.id == body.session_id, DBSession.user_id == current_user.id).first()
         if not session:
@@ -94,6 +94,23 @@ def add_message(body: MessageAdd, llm: LLMSService = Depends(get_llm_service), d
         assistant_msg = Message(session_id=body.session_id, role="assistant", content=response, timestamp=datetime.utcnow())
         db.add(assistant_msg)
         db.commit()
+
+        # Append compact entry to user history for recommendations (cap 50)
+        try:
+            hist = current_user.history or []
+            hist.append({
+                "session_id": body.session_id,
+                "subject": session.subject,
+                "prompt": body.prompt[:200],
+                "response": response[:200],
+                "ts": datetime.utcnow().isoformat()
+            })
+            if len(hist) > 50:
+                hist = hist[-50:]
+            current_user.history = hist
+            db.commit()
+        except Exception:
+            pass
         
         # Return session name if updated
         return {"response": response, "session_name": session.name if msg_count == 1 else None}
