@@ -54,7 +54,7 @@ A comprehensive AI-powered educational platform that provides personalized learn
 
 1. **Clone Repository**
 ```bash
-git clone <repository-url>
+git clone [<repository-url>](https://github.com/Bilal-Waleed/Ai-Tutor-Platform.git)
 cd ai-tutor-platform
 ```
 
