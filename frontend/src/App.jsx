@@ -113,6 +113,12 @@ function App() {
     setResponseLoading(true);
     try {
       setMessages(prev => [...prev, { role: 'user', content: text }]);
+      // Scroll to bottom after rendering the new user message
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      }, 0);
       let sessionId = currentSessionId;
       if (!sessionId) {
         const createRes = await api.post('/api/sessions/create', { subject: currentSubject });
@@ -121,6 +127,12 @@ function App() {
       }
       const res = await api.post('/api/sessions/add-message', { session_id: sessionId, prompt: text });
       setMessages(prev => [...prev, { role: 'assistant', content: res.data.response }]);
+      // Ensure view stays at the bottom when assistant responds
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      }, 0);
       if (sessionName === 'New Chat') {
         setSessionName(res.data.session_name || 'Chat Session');
       }
@@ -205,23 +217,44 @@ function App() {
               setShowProgressModal={setShowProgressModal}
               setShowHistoryPanel={setShowHistoryPanel}
               startNewChat={startNewChat}
+              currentView={currentView}
             />
-            {showHistoryPanel && <HistoryPanel setCurrentSessionId={setCurrentSessionId} setShowHistoryPanel={setShowHistoryPanel} currentSessionId={currentSessionId} />}
+            {showHistoryPanel && (
+              <HistoryPanel 
+                setCurrentSessionId={setCurrentSessionId} 
+                setShowHistoryPanel={setShowHistoryPanel} 
+                currentSessionId={currentSessionId}
+                setCurrentView={setCurrentView}
+              />
+            )}
             <div className="flex-1 flex flex-col">
               {currentView === 'chat' && (
                 <>
-                  <header className="p-4 bg-blue-600 text-white font-bold text-xl relative">
-                    AI Tutor Chat
-                    <div className="text-sm mt-1 flex justify-between">
-                      <span>{sessionName}</span>
-                      <span>{currentSubject || 'No Subject Selected'}</span>
+                  <header className="p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-xl relative shadow-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h1 className="text-xl font-bold">AI Tutor Chat</h1>
+                        <div className="text-sm mt-1 flex items-center space-x-4">
+                          <span className="bg-white/20 px-3 py-1 rounded-full">{sessionName}</span>
+                          <span className="bg-white/20 px-3 py-1 rounded-full">{currentSubject || 'No Subject Selected'}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+                        <span className="text-sm">Online</span>
+                      </div>
                     </div>
                   </header>
-                  <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-900">
+                  <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-900 custom-scroll">
                     <ChatHistory messages={messages} />
                     {responseLoading && (
-                      <div className="p-3 text-center text-gray-400 animate-pulse">
-                        <span>.</span><span>.</span><span>.</span>
+                      <div className="flex items-center space-x-2 p-3 text-gray-300">
+                        <div className="flex items-start">
+                          <div className="min-w-[32px] h-8 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 flex items-center justify-center shrink-0">
+                            <span className="text-white">🤖</span>
+                          </div>
+                        </div>
+                        <div className="text-sm"><span className="dots"></span></div>
                       </div>
                     )}
                   </div>

@@ -87,8 +87,8 @@ def add_message(body: MessageAdd, llm: LLMSService = Depends(get_llm_service), d
             session.name = llm.generate_response(name_prompt, "general")[:50]
             db.commit()
         
-        # Generate response
-        response = llm.generate_response(body.prompt, session.subject)
+        # Generate response with auto language detection and appropriate length
+        response = llm.generate_response(body.prompt, session.subject, language="auto")
         
         # Add assistant response
         assistant_msg = Message(session_id=body.session_id, role="assistant", content=response, timestamp=datetime.utcnow())

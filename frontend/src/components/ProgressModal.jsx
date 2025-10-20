@@ -22,8 +22,8 @@ const ProgressModal = ({ setShowProgressModal }) => {
   }, []);
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-md">
-      <div className="bg-gray-800 p-8 rounded-xl shadow-lg max-w-md w-full mx-4">
+    <div className="fixed inset-0 flex items-center justify-center backdrop-blur-md bg-gray-900/40">
+      <div className="bg-gray-800 p-8 rounded-xl shadow-lg max-w-md w-full mx-4 border border-gray-700">
         <h2 className="text-2xl font-bold text-white mb-4">Your Progress</h2>
         {Object.keys(progress).length === 0 ? (
           <p className="text-gray-400">No progress yet. Start learning!</p>

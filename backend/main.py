@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from routers import qa, recommend, code_debug, auth, sessions
 from db import engine
 from models.base import Base  # Import shared Base
-from models import User, Session, Message  # Import models to register with Base
+from models import User, Session, Message, CodeSession  # Import models to register with Base
 
 # Create all tables automatically (includes foreign keys)
 Base.metadata.create_all(bind=engine)

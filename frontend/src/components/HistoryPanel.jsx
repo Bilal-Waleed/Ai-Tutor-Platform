@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import api from '../services/api';
 import { toast } from 'react-toastify';
 
-const HistoryPanel = ({ setCurrentSessionId, setShowHistoryPanel, currentSessionId }) => {
+const HistoryPanel = ({ setCurrentSessionId, setShowHistoryPanel, currentSessionId, setCurrentView }) => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -29,12 +29,13 @@ const HistoryPanel = ({ setCurrentSessionId, setShowHistoryPanel, currentSession
 
   const loadSession = async (id) => {
     setCurrentSessionId(id);
+    setCurrentView('chat');
     setShowHistoryPanel(false);
     toast.success('Session loaded!');
   };
 
   return (
-    <div className="absolute left-16 top-0 h-screen w-64 bg-gray-800 p-4 overflow-y-auto shadow-lg z-50">
+    <div className="absolute left-16 top-0 h-screen w-64 bg-gray-800 p-4 overflow-y-auto custom-scroll shadow-lg z-50">
       <h3 className="text-white text-lg mb-4">Chat History</h3>
       {loading && <p className="text-gray-400">Loading sessions...</p>}
       {error && <p className="text-red-400">{error}</p>}
