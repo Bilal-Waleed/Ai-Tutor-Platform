@@ -3,7 +3,7 @@ import { MdLightbulbOutline, MdTrendingUp, MdMenuBook, MdArrowForward, MdMessage
 import api from '../services/api';
 import { toast } from 'react-toastify';
 
-const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewChat }) => {
+const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewChat, currentSubject }) => {
   const [recommendations, setRecommendations] = useState('');
   const [progress, setProgress] = useState({});
   const [loading, setLoading] = useState(false);
@@ -11,13 +11,15 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
 
   useEffect(() => {
     fetchRecommendations();
-  }, []);
+  }, [currentSubject]); // Re-fetch when subject changes
 
   const fetchRecommendations = async () => {
     try {
       setLoading(true);
       const [recommendRes, progressRes] = await Promise.all([
-        api.get('/api/recommend/'),
+        api.get('/api/recommend/', { 
+          params: currentSubject && currentSubject !== 'general' ? { subject: currentSubject } : {} 
+        }),
         api.get('/api/recommend/progress')
       ]);
       
@@ -46,9 +48,11 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
         color: 'text-blue-400'
       });
     } else {
-      const weakestSubject = subjects.reduce((min, subject) => 
-        (progress[subject] || 0) < (progress[min] || 0) ? subject : min
-      );
+      // Use current subject if available, otherwise find weakest
+      const targetSubject = currentSubject && currentSubject !== 'general' ? currentSubject : 
+        subjects.reduce((min, subject) => 
+          (progress[subject] || 0) < (progress[min] || 0) ? subject : min
+        );
       
       // Subject-specific actions
       const subjectActions = {
@@ -90,15 +94,15 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
         }
       };
       
-      const currentSubjectActions = subjectActions[weakestSubject] || subjectActions.coding;
+      const currentSubjectActions = subjectActions[targetSubject] || subjectActions.coding;
       
       actions.push(
         {
-          label: `Focus on ${weakestSubject.charAt(0).toUpperCase() + weakestSubject.slice(1)}`,
+          label: `Focus on ${targetSubject.charAt(0).toUpperCase() + targetSubject.slice(1)}`,
           icon: currentSubjectActions.icon,
           action: () => {
             setCurrentView('chat');
-            toast.info(`Let's work on ${weakestSubject}!`);
+            toast.info(`Let's work on ${targetSubject}!`);
           },
           color: currentSubjectActions.color
         },
@@ -143,6 +147,18 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
           <MdTrendingUp className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
         </button>
       </div>
+
+      {/* Current Subject Display */}
+      {currentSubject && currentSubject !== 'general' && (
+        <div className="mb-3 p-2 bg-blue-600/20 rounded-lg border border-blue-500/30">
+          <div className="flex items-center">
+            <MdBook className="w-4 h-4 text-blue-400 mr-2" />
+            <span className="text-xs text-blue-300 font-medium">
+              Current Subject: {currentSubject.charAt(0).toUpperCase() + currentSubject.slice(1)}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* Recommendations Text */}
       <div className="mb-3">

@@ -1,14 +1,24 @@
 // src/components/MessageBar.jsx (Enhanced with better UI and functionality)
 import React, { useState } from 'react';
 import { Send, Paperclip, Mic } from 'lucide-react';
+import { toast } from 'react-toastify';
 
 const MessageBar = ({ input, setInput, sendMessage }) => {
   const [isTyping, setIsTyping] = useState(false);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (input.trim()) {
-      sendMessage(input);
-      setInput('');
+      try {
+        await sendMessage(input);
+        setInput('');
+      } catch (error) {
+        // Check if it's a quota exceeded error
+        if (error.response?.data?.response?.includes('high demand') || 
+            error.response?.data?.response?.includes('quota exceeded') ||
+            error.response?.data?.response?.includes('429')) {
+          toast.info('API quota exceeded. You\'re getting helpful fallback responses from our knowledge base!');
+        }
+      }
     }
   };
 

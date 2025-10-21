@@ -132,6 +132,12 @@ function App() {
       }
       const res = await api.post('/api/sessions/add-message', { session_id: sessionId, prompt: text });
       setMessages(prev => [...prev, { role: 'assistant', content: res.data.response }]);
+      
+      // Check if response indicates quota exceeded and show toast
+      if (res.data.response.includes('high demand') || res.data.response.includes('quota exceeded')) {
+        toast.info('API quota exceeded. You\'re getting helpful fallback responses from our knowledge base!');
+      }
+      
       // Ensure view stays at the bottom when assistant responds
       setTimeout(() => {
         if (chatContainerRef.current) {
@@ -183,15 +189,11 @@ function App() {
     setSessionName('New Chat');
     setPage(1);
     
+    // Reset subject to general for new chat
+    setCurrentSubject('general');
+    
     // Always force subject selection for a new chat
     setShowSubjectModal(true);
-    
-    try {
-      const userRes = await api.get('/api/auth/me');
-      setCurrentSubject(userRes.data.current_subject || 'general');
-    } catch (err) {
-      toast.error('Failed to refresh user data');
-    }
     
     persistData();
   };
@@ -239,6 +241,7 @@ function App() {
                 startNewChat={startNewChat}
                 currentView={currentView}
                 setSidebarOpen={setSidebarOpen}
+                currentSubject={currentSubject}
               />
             </div>
 
@@ -323,7 +326,18 @@ function App() {
             {showSubjectModal && (
               <SubjectSelector 
                 setShowSubjectModal={setShowSubjectModal} 
-                updateCurrentSubject={updateCurrentSubject} 
+                updateCurrentSubject={updateCurrentSubject}
+                onSubjectChange={(newSubject) => {
+                  // This will trigger a re-render and refresh recommendations
+                  setCurrentSubject(newSubject);
+                }}
+                onModalClose={() => {
+                  // When modal is closed without selecting, ensure subject is general
+                  if (currentSubject === 'general') {
+                    // If still general, that's fine - user needs to select subject
+                    toast.info('Please select a subject to start chatting');
+                  }
+                }}
               />
             )}
             {showProgressModal && <ProgressDashboard setShowProgressModal={setShowProgressModal} setCurrentView={setCurrentView} />}

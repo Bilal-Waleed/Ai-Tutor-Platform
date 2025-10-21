@@ -43,6 +43,7 @@ class ProgressUpdate(BaseModel):
 # ------------------------------------------------------------------
 @router.get("/")
 def get_recommendations(
+    subject: str = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
@@ -53,61 +54,100 @@ def get_recommendations(
     """
     progress = current_user.progress or {}
     history = current_user.history or []
+    current_subject = subject or current_user.current_subject or "general"
 
     if not progress:
+        # Subject-specific welcome messages
+        welcome_messages = {
+            "coding": "Welcome to Coding! Start by asking about Python basics, variables, functions, or try debugging some code. Ask me 'What is a variable in Python?' or 'How do I create a function?'",
+            "math": "Welcome to Math! Let's explore algebra, calculus, or geometry together. Try asking 'Explain derivatives' or 'How do I solve quadratic equations?'",
+            "ielts": "Welcome to IELTS! Practice writing essays, improve vocabulary, or work on speaking skills. Ask me 'How to write a good essay?' or 'IELTS speaking tips'",
+            "physics": "Welcome to Physics! Learn about motion, energy, or basic physics concepts. Try asking 'Explain Newton's laws' or 'What is kinetic energy?'",
+            "general": "Welcome! Start your learning journey by selecting a subject and asking questions. Try asking 'What is a variable in Python?' or 'Explain calculus basics'."
+        }
         return {
-            "recommendations": "Welcome! Start your learning journey by selecting a subject and asking questions. Try asking 'What is a variable in Python?' or 'Explain calculus basics'.",
+            "recommendations": welcome_messages.get(current_subject, welcome_messages["general"]),
             "progress": progress,
+            "current_subject": current_subject
         }
 
-    # Find weakest subject
-    low_sub = min(progress, key=progress.get)
-    low_score = progress[low_sub]
-    
     # Generate subject-specific recommendations
     subject_recommendations = {
         "coding": [
             "Practice Python basics with simple programs",
-            "Try debugging some code examples",
+            "Try debugging some code examples", 
             "Learn about variables, functions, and loops",
             "Ask about data structures and algorithms",
-            "Take a coding quiz to test your knowledge"
+            "Take a coding quiz to test your knowledge",
+            "Practice object-oriented programming concepts",
+            "Learn about error handling and exceptions",
+            "Try building a simple calculator or game"
         ],
         "math": [
             "Practice algebra and calculus problems",
             "Learn about derivatives and integrals",
             "Try solving quadratic equations",
             "Ask about mathematical concepts step by step",
-            "Take a math quiz to assess your skills"
+            "Take a math quiz to assess your skills",
+            "Practice trigonometry and geometry",
+            "Learn about limits and continuity",
+            "Try solving word problems"
         ],
         "ielts": [
             "Practice writing essays on common topics",
             "Improve vocabulary and grammar",
             "Try speaking practice questions",
             "Learn about IELTS test format and tips",
-            "Take an IELTS quiz to practice test questions"
+            "Take an IELTS quiz to practice test questions",
+            "Practice listening comprehension",
+            "Work on reading strategies",
+            "Learn academic writing techniques"
         ],
         "physics": [
             "Learn Newton's laws of motion",
             "Practice kinetic energy calculations",
             "Understand basic physics concepts",
             "Ask about formulas and their applications",
-            "Take a physics quiz to test your understanding"
+            "Take a physics quiz to test your understanding",
+            "Learn about thermodynamics",
+            "Practice projectile motion problems",
+            "Understand electromagnetic concepts"
         ]
     }
     
-    # Get recommendations for weakest subject
-    subject_suggestions = subject_recommendations.get(low_sub, ["Continue practicing and asking questions"])
+    # If specific subject requested, use that subject
+    target_subject = current_subject if current_subject != "general" else None
     
-    # Generate personalized recommendation
-    if low_score < 50:
-        rec = f"Your {low_sub} needs more practice (score: {low_score:.1f}%). Try: {subject_suggestions[0]}"
-    elif low_score < 70:
-        rec = f"Good progress in {low_sub} (score: {low_score:.1f}%). Next: {subject_suggestions[1]}"
+    if target_subject and target_subject in subject_recommendations:
+        # Get recommendations for specific subject
+        subject_suggestions = subject_recommendations[target_subject]
+        subject_score = progress.get(target_subject, 0)
+        
+        if subject_score < 30:
+            rec = f"Let's focus on {target_subject}! Start with: {subject_suggestions[0]}"
+        elif subject_score < 50:
+            rec = f"Good start in {target_subject}! Next try: {subject_suggestions[1]}"
+        elif subject_score < 70:
+            rec = f"Great progress in {target_subject}! Advance to: {subject_suggestions[2]}"
+        else:
+            rec = f"Excellent work in {target_subject}! Master level: {subject_suggestions[3]}"
     else:
-        rec = f"Excellent work in {low_sub} (score: {low_score:.1f}%)! Try: {subject_suggestions[2]}"
+        # Find weakest subject for general recommendations
+        if progress:
+            low_sub = min(progress, key=progress.get)
+            low_score = progress[low_sub]
+            subject_suggestions = subject_recommendations.get(low_sub, ["Continue practicing and asking questions"])
+            
+            if low_score < 50:
+                rec = f"Your {low_sub} needs more practice (score: {low_score:.1f}%). Try: {subject_suggestions[0]}"
+            elif low_score < 70:
+                rec = f"Good progress in {low_sub} (score: {low_score:.1f}%). Next: {subject_suggestions[1]}"
+            else:
+                rec = f"Excellent work in {low_sub} (score: {low_score:.1f}%)! Try: {subject_suggestions[2]}"
+        else:
+            rec = "Start learning to get personalized recommendations!"
     
-    return {"recommendations": rec, "progress": progress}
+    return {"recommendations": rec, "progress": progress, "current_subject": current_subject}
 
 
 @router.get("/progress")
