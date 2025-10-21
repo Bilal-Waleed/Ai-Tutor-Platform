@@ -1,7 +1,7 @@
 from sqlalchemy import Column, Integer, String, Text, JSON, DateTime, ForeignKey, Float, Boolean
 from sqlalchemy.orm import relationship
 from .base import Base
-from datetime import datetime
+from datetime import datetime, timezone
 
 class Quiz(Base):
     __tablename__ = "quizzes"
@@ -15,7 +15,7 @@ class Quiz(Base):
     total_questions = Column(Integer, default=10)
     time_limit = Column(Integer, default=600)  # seconds
     status = Column(String, default="active")  # active, completed, abandoned
-    created_at = Column(DateTime, default=datetime.utcnow)
+    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime, nullable=True)
     
     # Relationships
@@ -52,7 +52,7 @@ class QuizAttempt(Base):
     is_correct = Column(Boolean, default=False)
     points_earned = Column(Integer, default=0)
     time_taken = Column(Integer, default=0)  # seconds
-    attempted_at = Column(DateTime, default=datetime.utcnow)
+    attempted_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     
     # Relationships
     quiz = relationship("Quiz", back_populates="attempts")
@@ -70,7 +70,7 @@ class QuizSession(Base):
     percentage = Column(Float, default=0.0)
     time_taken = Column(Integer, default=0)  # total seconds
     status = Column(String, default="in_progress")  # in_progress, completed, abandoned
-    started_at = Column(DateTime, default=datetime.utcnow)
+    started_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
     completed_at = Column(DateTime, nullable=True)
     
     # Relationships

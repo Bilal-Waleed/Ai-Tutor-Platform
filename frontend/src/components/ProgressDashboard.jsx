@@ -8,6 +8,7 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
   const [progress, setProgress] = useState({});
   const [recommendations, setRecommendations] = useState('');
   const [loading, setLoading] = useState(true);
+  const [sessions, setSessions] = useState([]);
   const [stats, setStats] = useState({
     totalSessions: 0,
     averageScore: 0,
@@ -60,22 +61,43 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
       setProgress(progressRes.data.progress || {});
       setRecommendations(recommendRes.data.recommendations || 'No recommendations yet.');
       
+      // Set sessions data
+      const sessionsData = sessionsRes.data || [];
+      setSessions(sessionsData);
+      
       // Calculate stats
-      const sessions = sessionsRes.data || [];
+      const sessions = sessionsData;
       const quizHistory = quizHistoryRes.data.quiz_history || [];
       const totalSessions = sessions.length;
       const totalQuizzes = quizHistory.length;
-      const scores = Object.values(progressRes.data.progress || {});
-      const averageScore = scores.length > 0 ? scores.reduce((a, b) => a + b, 0) / scores.length : 0;
+      
+      // Calculate quiz average score from quiz history
       const quizAverageScore = totalQuizzes > 0 ? quizHistory.reduce((sum, quiz) => sum + quiz.percentage, 0) / totalQuizzes : 0;
+      
+      // Calculate progress average score from user's progress field
+      const progressScores = Object.values(progressRes.data.progress || {});
+      const progressAverageScore = progressScores.length > 0 ? progressScores.reduce((sum, score) => sum + score, 0) / progressScores.length : 0;
+      
+      // Calculate completed topics based on sessions (more realistic)
+      const uniqueSubjects = new Set(sessions.map(session => session.subject));
+      const completedTopics = uniqueSubjects.size;
+      
+      // Calculate streak days based on recent activity
+      const today = new Date();
+      const recentSessions = sessions.filter(session => {
+        const sessionDate = new Date(session.created_at);
+        const daysDiff = Math.floor((today - sessionDate) / (1000 * 60 * 60 * 24));
+        return daysDiff <= 7; // Last 7 days
+      });
+      const streakDays = recentSessions.length > 0 ? Math.min(recentSessions.length, 7) : 0;
       
       setStats({
         totalSessions,
-        averageScore: Math.round(averageScore),
-        streakDays: Math.floor(Math.random() * 7) + 1, // Mock streak for now
-        completedTopics: Object.keys(progressRes.data.progress || {}).length,
+        averageScore: Math.round(progressAverageScore), // Use progress average from user's progress field
+        streakDays: streakDays, // Real streak calculation
+        completedTopics: completedTopics, // Based on actual sessions
         totalQuizzes,
-        quizAverageScore: Math.round(quizAverageScore)
+        quizAverageScore: Math.round(quizAverageScore) // Separate quiz average
       });
       
       
@@ -87,15 +109,22 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
     }
   };
 
-  const chartData = Object.entries(progress).map(([subject, score]) => ({
+  // Create chart data from sessions and quiz history instead of progress
+  const sessionSubjects = sessions.map(session => session.subject);
+  const subjectCounts = sessionSubjects.reduce((acc, subject) => {
+    acc[subject] = (acc[subject] || 0) + 1;
+    return acc;
+  }, {});
+
+  const chartData = Object.entries(subjectCounts).map(([subject, count]) => ({
     subject: subject.charAt(0).toUpperCase() + subject.slice(1),
-    score: Math.round(score),
-    fill: COLORS[Object.keys(progress).indexOf(subject) % COLORS.length]
+    score: count * 10, // Convert session count to a score-like metric
+    fill: COLORS[Object.keys(subjectCounts).indexOf(subject) % COLORS.length]
   }));
 
-  const pieData = Object.entries(progress).map(([subject, score], index) => ({
+  const pieData = Object.entries(subjectCounts).map(([subject, count], index) => ({
     name: subject.charAt(0).toUpperCase() + subject.slice(1),
-    value: Math.round(score),
+    value: count,
     fill: COLORS[index % COLORS.length]
   }));
 
@@ -113,7 +142,7 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
   }
 
   // Fallback UI if no data is available
-  if (Object.keys(progress).length === 0 && stats.totalSessions === 0 && stats.totalQuizzes === 0) {
+  if (sessions.length === 0 && stats.totalSessions === 0 && stats.totalQuizzes === 0) {
     return (
       <div className="fixed inset-0 flex items-center justify-center backdrop-blur-md bg-gray-900/40 p-2 lg:p-4">
         <div className="bg-gray-800 p-4 lg:p-6 rounded-xl shadow-lg max-w-2xl w-full mx-2 lg:mx-4 border border-gray-700">
@@ -218,7 +247,7 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
           <div className="bg-gradient-to-r from-green-600 to-green-700 p-3 lg:p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-green-100 text-xs lg:text-sm">Average Score</p>
+                <p className="text-green-100 text-xs lg:text-sm">Progress Score</p>
                 <p className="text-lg lg:text-2xl font-bold text-white">{stats.averageScore}%</p>
               </div>
               <MdBarChart className="w-6 h-6 lg:w-8 lg:h-8 text-green-200" />
@@ -258,7 +287,7 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
           <div className="bg-gradient-to-r from-pink-600 to-pink-700 p-3 lg:p-4 rounded-lg">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-pink-100 text-xs lg:text-sm">Quiz Average</p>
+                <p className="text-pink-100 text-xs lg:text-sm">Quiz Performance</p>
                 <p className="text-lg lg:text-2xl font-bold text-white">{stats.quizAverageScore}%</p>
               </div>
               <MdTrendingUp className="w-6 h-6 lg:w-8 lg:h-8 text-pink-200" />
@@ -271,7 +300,7 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
           <div className="bg-gray-700 p-4 rounded-lg">
             <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
               <MdCheckCircle className="mr-2 text-green-400" />
-              Subject Progress
+              Learning Activity by Subject
             </h3>
             {chartData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
@@ -294,8 +323,8 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
               <div className="flex items-center justify-center h-64 text-gray-400">
                 <div className="text-center">
                   <MdMenuBook className="w-16 h-16 mx-auto mb-4 text-gray-500" />
-                  <p className="text-lg">No progress data yet</p>
-                  <p className="text-sm">Start learning to see your progress!</p>
+                  <p className="text-lg">No learning activity yet</p>
+                  <p className="text-sm">Start a chat session to see your activity!</p>
                 </div>
               </div>
             )}
@@ -305,7 +334,7 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
           <div className="bg-gray-700 p-4 rounded-lg">
             <h3 className="text-xl font-semibold text-white mb-4 flex items-center">
               <MdBarChart className="mr-2 text-blue-400" />
-              Subject Distribution
+              Session Distribution
             </h3>
             {pieData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
@@ -338,8 +367,8 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
               <div className="flex items-center justify-center h-64 text-gray-400">
                 <div className="text-center">
                   <MdBarChart className="w-16 h-16 mx-auto mb-4 text-gray-500" />
-                  <p className="text-lg">No subjects yet</p>
-                  <p className="text-sm">Select subjects to start tracking!</p>
+                  <p className="text-lg">No sessions yet</p>
+                  <p className="text-sm">Start chatting to see session distribution!</p>
                 </div>
               </div>
             )}

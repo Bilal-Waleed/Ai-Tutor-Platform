@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
 import { toast } from 'react-toastify';
 import api from '../services/api';
+import { formatDateTime } from '../utils/timeUtils';
 
 const CodeDebug = () => {
   const [codeInput, setCodeInput] = useState('');
@@ -98,13 +99,7 @@ const CodeDebug = () => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatDateTime(dateString);
   };
 
   return (

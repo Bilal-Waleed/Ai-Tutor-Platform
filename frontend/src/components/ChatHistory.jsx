@@ -1,14 +1,16 @@
 
 import { User, Bot, Clock } from 'lucide-react';
 
+import { formatTime as formatTimeUtil, testPakistanTimezone } from '../utils/timeUtils';
+
 const ChatHistory = ({ messages }) => {
   const formatTime = (timestamp) => {
-    if (!timestamp) return '';
-    return new Date(timestamp).toLocaleTimeString('en-US', {
-      hour: '2-digit',
-      minute: '2-digit'
-    });
+    return formatTimeUtil(timestamp);
   };
+
+  // Test Pakistan timezone conversion
+  const timezoneTest = testPakistanTimezone();
+  console.log('Pakistan Timezone Test:', timezoneTest);
 
   return (
     <div className="flex-1 overflow-y-auto p-4 space-y-6 bg-gray-900 text-white">

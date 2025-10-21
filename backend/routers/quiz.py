@@ -13,6 +13,7 @@ import json
 import random
 import re
 from typing import List, Dict, Optional
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -51,6 +52,7 @@ class QuizAnswer(BaseModel):
 class QuizSubmit(BaseModel):
     quiz_id: int
     answers: List[QuizAnswer]
+    total_time_taken: Optional[int] = None
 
 class QuizResult(BaseModel):
     quiz_id: int
@@ -171,6 +173,8 @@ def generate_quiz_questions(subject: str, difficulty: str, quiz_type: str, count
         question_type = random.choice(types)
         template = random.choice(templates.get(question_type, templates["multiple_choice"]))
         
+        print(f"Generating question {i+1}/{count} - Type: {question_type}")
+        
         # Generate question using AI
         prompt = f"""
         Generate a {difficulty} level {question_type} question for {subject} based on this template: "{template}"
@@ -201,19 +205,265 @@ def generate_quiz_questions(subject: str, difficulty: str, quiz_type: str, count
                 question_data["difficulty"] = difficulty
                 question_data["points"] = 10 if difficulty == "beginner" else (15 if difficulty == "intermediate" else 20)
                 questions.append(question_data)
+            else:
+                # If no JSON found, create a fallback question
+                questions.append(create_fallback_question(subject, question_type, difficulty, i+1))
         except Exception as e:
-            # Fallback to simple questions if AI generation fails
-            questions.append({
-                "question_text": f"Sample {subject} question {i+1}?",
-                "question_type": question_type,
-                "options": ["Option A", "Option B", "Option C", "Option D"] if question_type == "multiple_choice" else None,
-                "correct_answer": "Sample answer",
-                "explanation": "This is a sample explanation",
-                "difficulty": difficulty,
-                "points": 10
-            })
+            # Fallback to enhanced questions if AI generation fails
+            print(f"AI generation failed for question {i+1}: {str(e)}")
+            print(f"Using fallback question for question {i+1}")
+            questions.append(create_fallback_question(subject, question_type, difficulty, i+1))
     
     return questions
+
+def create_fallback_question(subject: str, question_type: str, difficulty: str, question_num: int) -> Dict:
+    """Create a fallback question when AI generation fails."""
+    
+    # Subject-specific fallback questions
+    fallback_questions = {
+        "coding": {
+            "multiple_choice": [
+                {
+                    "question_text": f"What is the correct syntax to create a variable in Python?",
+                    "options": ["var name = value", "name = value", "variable name = value", "def name = value"],
+                    "correct_answer": "name = value"
+                },
+                {
+                    "question_text": f"Which keyword is used to define a function in Python?",
+                    "options": ["function", "def", "func", "define"],
+                    "correct_answer": "def"
+                },
+                {
+                    "question_text": f"What does the 'print()' function do in Python?",
+                    "options": ["Creates a file", "Displays output", "Reads input", "Calculates math"],
+                    "correct_answer": "Displays output"
+                },
+                {
+                    "question_text": f"Which data type is used to store text in Python?",
+                    "options": ["int", "str", "bool", "float"],
+                    "correct_answer": "str"
+                },
+                {
+                    "question_text": f"What is the result of 5 + 3 in Python?",
+                    "options": ["53", "8", "15", "Error"],
+                    "correct_answer": "8"
+                },
+                {
+                    "question_text": f"Which operator is used for exponentiation in Python?",
+                    "options": ["^", "**", "pow()", "exp()"],
+                    "correct_answer": "**"
+                },
+                {
+                    "question_text": f"What is the output of len('hello')?",
+                    "options": ["4", "5", "6", "Error"],
+                    "correct_answer": "5"
+                },
+                {
+                    "question_text": f"Which method adds an item to the end of a list?",
+                    "options": ["append()", "add()", "insert()", "push()"],
+                    "correct_answer": "append()"
+                },
+                {
+                    "question_text": f"What is the correct way to import a module?",
+                    "options": ["import module", "include module", "require module", "load module"],
+                    "correct_answer": "import module"
+                },
+                {
+                    "question_text": f"Which keyword is used for conditional statements?",
+                    "options": ["if", "when", "case", "switch"],
+                    "correct_answer": "if"
+                },
+                {
+                    "question_text": f"What does the 'range()' function do?",
+                    "options": ["Creates a list", "Generates numbers", "Finds max value", "Sorts data"],
+                    "correct_answer": "Generates numbers"
+                },
+                {
+                    "question_text": f"Which data structure stores key-value pairs?",
+                    "options": ["list", "tuple", "dictionary", "set"],
+                    "correct_answer": "dictionary"
+                }
+            ],
+            "fill_blank": [
+                {
+                    "question_text": f"Complete this Python function: def greet(name):\n    return 'Hello ' + ___",
+                    "correct_answer": "name"
+                },
+                {
+                    "question_text": f"Fill in the missing keyword: ___ x in range(5):\n    print(x)",
+                    "correct_answer": "for"
+                },
+                {
+                    "question_text": f"Complete this variable assignment: age = ___",
+                    "correct_answer": "25"
+                },
+                {
+                    "question_text": f"Complete this list: numbers = [1, 2, 3, ___]",
+                    "correct_answer": "4"
+                },
+                {
+                    "question_text": f"Fill in the missing operator: result = 10 ___ 2  # Should give 5",
+                    "correct_answer": "/"
+                },
+                {
+                    "question_text": f"Complete this condition: if age ___ 18:",
+                    "correct_answer": ">="
+                },
+                {
+                    "question_text": f"Fill in the missing method: my_list.___('item')",
+                    "correct_answer": "append"
+                },
+                {
+                    "question_text": f"Complete this import: ___ math",
+                    "correct_answer": "import"
+                }
+            ],
+            "code_completion": [
+                {
+                    "question_text": f"Write a Python function that takes two numbers and returns their sum.",
+                    "correct_answer": "def add(a, b):\n    return a + b"
+                },
+                {
+                    "question_text": f"Write a Python loop that prints numbers 1 to 5.",
+                    "correct_answer": "for i in range(1, 6):\n    print(i)"
+                },
+                {
+                    "question_text": f"Write a Python function to check if a number is even.",
+                    "correct_answer": "def is_even(n):\n    return n % 2 == 0"
+                },
+                {
+                    "question_text": f"Write a Python list comprehension to create squares of numbers 1-5.",
+                    "correct_answer": "[x**2 for x in range(1, 6)]"
+                },
+                {
+                    "question_text": f"Write a Python function to find the maximum of two numbers.",
+                    "correct_answer": "def max_num(a, b):\n    return a if a > b else b"
+                },
+                {
+                    "question_text": f"Write a Python loop to iterate through a list and print each item.",
+                    "correct_answer": "for item in my_list:\n    print(item)"
+                },
+                {
+                    "question_text": f"Write a Python function to reverse a string.",
+                    "correct_answer": "def reverse_string(s):\n    return s[::-1]"
+                },
+                {
+                    "question_text": f"Write a Python dictionary with keys 'name' and 'age'.",
+                    "correct_answer": "person = {'name': 'John', 'age': 25}"
+                }
+            ]
+        },
+        "math": {
+            "multiple_choice": [
+                {
+                    "question_text": f"What is 15 + 27?",
+                    "options": ["32", "42", "52", "62"],
+                    "correct_answer": "42"
+                },
+                {
+                    "question_text": f"What is the derivative of x²?",
+                    "options": ["x", "2x", "x²", "2x²"],
+                    "correct_answer": "2x"
+                },
+                {
+                    "question_text": f"What is √16?",
+                    "options": ["4", "8", "16", "32"],
+                    "correct_answer": "4"
+                }
+            ],
+            "fill_blank": [
+                {
+                    "question_text": f"The derivative of 3x² is ___",
+                    "correct_answer": "6x"
+                },
+                {
+                    "question_text": f"The integral of 2x is ___",
+                    "correct_answer": "x² + C"
+                }
+            ],
+            "code_completion": [
+                {
+                    "question_text": f"Calculate the area of a circle with radius 5.",
+                    "correct_answer": "π × 5² = 25π"
+                }
+            ]
+        },
+        "ielts": {
+            "multiple_choice": [
+                {
+                    "question_text": f"Which sentence is grammatically correct?",
+                    "options": ["I am go to school", "I go to school", "I going to school", "I goes to school"],
+                    "correct_answer": "I go to school"
+                },
+                {
+                    "question_text": f"What is the past tense of 'go'?",
+                    "options": ["goed", "went", "gone", "going"],
+                    "correct_answer": "went"
+                }
+            ],
+            "fill_blank": [
+                {
+                    "question_text": f"Complete: I ___ to the store yesterday.",
+                    "correct_answer": "went"
+                }
+            ],
+            "code_completion": [
+                {
+                    "question_text": f"Write a sentence using the word 'beautiful'.",
+                    "correct_answer": "The sunset was beautiful."
+                }
+            ]
+        },
+        "physics": {
+            "multiple_choice": [
+                {
+                    "question_text": f"What is the unit of force?",
+                    "options": ["Joule", "Newton", "Watt", "Pascal"],
+                    "correct_answer": "Newton"
+                },
+                {
+                    "question_text": f"What is the acceleration due to gravity?",
+                    "options": ["9.8 m/s²", "10 m/s²", "8.9 m/s²", "11 m/s²"],
+                    "correct_answer": "9.8 m/s²"
+                }
+            ],
+            "fill_blank": [
+                {
+                    "question_text": f"Force = mass × ___",
+                    "correct_answer": "acceleration"
+                }
+            ],
+            "code_completion": [
+                {
+                    "question_text": f"Calculate kinetic energy: KE = ½ × m × v²",
+                    "correct_answer": "KE = ½ × mass × velocity²"
+                }
+            ]
+        }
+    }
+    
+    # Get subject questions
+    subject_questions = fallback_questions.get(subject, fallback_questions["coding"])
+    question_list = subject_questions.get(question_type, subject_questions["multiple_choice"])
+    
+    # Select question based on question number (cycle through available questions)
+    selected_question = question_list[question_num % len(question_list)]
+    
+    # Create the question data
+    question_data = {
+        "question_text": selected_question["question_text"],
+        "question_type": question_type,
+        "difficulty": difficulty,
+        "points": 10 if difficulty == "beginner" else (15 if difficulty == "intermediate" else 20),
+        "correct_answer": selected_question["correct_answer"],
+        "explanation": f"This is a {difficulty} level {subject} question."
+    }
+    
+    # Add options for multiple choice
+    if question_type == "multiple_choice" and "options" in selected_question:
+        question_data["options"] = selected_question["options"]
+    
+    return question_data
 
 def calculate_quiz_score(answers: List[QuizAnswer], questions: List[QuizQuestion], llm: GeminiService) -> Dict:
     """Calculate quiz score using AI evaluation."""
@@ -230,32 +480,43 @@ def calculate_quiz_score(answers: List[QuizAnswer], questions: List[QuizQuestion
         
         # For multiple choice, check exact match
         if question.question_type == "multiple_choice":
-            is_correct = answer.user_answer.strip().lower() == question.correct_answer.strip().lower()
+            # Normalize answers for comparison
+            user_answer = answer.user_answer.strip().lower() if answer.user_answer else ""
+            correct_answer = question.correct_answer.strip().lower() if question.correct_answer else ""
+            is_correct = user_answer == correct_answer
             points_earned = question.points if is_correct else 0
         else:
             # Use AI to evaluate open-ended answers
-            evaluation_prompt = f"""
-            Evaluate this student answer for the question: "{question.question_text}"
-            
-            Student Answer: "{answer.user_answer}"
-            Correct Answer: "{question.correct_answer}"
-            
-            Rate the answer on a scale of 0-100 based on:
-            - Correctness (40%)
-            - Completeness (30%)
-            - Clarity (20%)
-            - Understanding demonstrated (10%)
-            
-            Respond with just a number between 0-100.
-            """
-            
-            try:
-                evaluation_response = llm.generate_response(evaluation_prompt, "general")
-                score_match = re.search(r'\d+', evaluation_response)
-                score = int(score_match.group(0)) if score_match else 50
-                points_earned = (score / 100) * question.points
-                is_correct = score >= 70
-            except:
+            if answer.user_answer and answer.user_answer.strip():
+                evaluation_prompt = f"""
+                Evaluate this student answer for the question: "{question.question_text}"
+                
+                Student Answer: "{answer.user_answer}"
+                Correct Answer: "{question.correct_answer}"
+                
+                Rate the answer on a scale of 0-100 based on:
+                - Correctness (40%)
+                - Completeness (30%)
+                - Clarity (20%)
+                - Understanding demonstrated (10%)
+                
+                Respond with just a number between 0-100.
+                """
+                
+                try:
+                    evaluation_response = llm.generate_response(evaluation_prompt, "general")
+                    score_match = re.search(r'\d+', evaluation_response)
+                    score = int(score_match.group(0)) if score_match else 50
+                    points_earned = (score / 100) * question.points
+                    is_correct = score >= 70
+                except:
+                    # If AI evaluation fails, use simple string matching as fallback
+                    user_answer = answer.user_answer.strip().lower()
+                    correct_answer = question.correct_answer.strip().lower()
+                    is_correct = user_answer in correct_answer or correct_answer in user_answer
+                    points_earned = question.points if is_correct else 0
+            else:
+                # Empty answer
                 points_earned = 0
                 is_correct = False
         
@@ -273,6 +534,9 @@ def calculate_quiz_score(answers: List[QuizAnswer], questions: List[QuizQuestion
         })
     
     percentage = (total_score / max_score * 100) if max_score > 0 else 0
+    
+    # Ensure percentage doesn't exceed 100
+    percentage = min(100, percentage)
     
     return {
         "total_score": total_score,
@@ -322,6 +586,7 @@ def create_quiz(
     db.flush()  # Get the quiz ID
     
     # Generate questions using AI
+    print(f"Generating {quiz_data.total_questions} questions for {quiz_data.subject} {quiz_data.difficulty} quiz...")
     questions_data = generate_quiz_questions(
         quiz_data.subject,
         quiz_data.difficulty,
@@ -329,6 +594,7 @@ def create_quiz(
         quiz_data.total_questions,
         llm
     )
+    print(f"Generated {len(questions_data)} questions")
     
     # Create question records
     for i, q_data in enumerate(questions_data):
@@ -405,6 +671,9 @@ def submit_quiz(
 ):
     """Submit quiz answers and get results."""
     
+    print(f"Received quiz submission: quiz_id={submission.quiz_id}, answers_count={len(submission.answers)}")
+    print(f"Total time taken: {submission.total_time_taken}")
+    
     quiz = db.query(Quiz).filter(
         Quiz.id == submission.quiz_id,
         Quiz.user_id == current_user.id
@@ -422,14 +691,17 @@ def submit_quiz(
     score_result = calculate_quiz_score(submission.answers, questions, llm)
     
     # Create quiz session record
+    total_time = submission.total_time_taken if submission.total_time_taken else sum(answer.time_taken for answer in submission.answers)
+    
     quiz_session = QuizSession(
         user_id=current_user.id,
         quiz_id=submission.quiz_id,
         total_score=score_result["total_score"],
         max_possible_score=score_result["max_score"],
         percentage=score_result["percentage"],
-        time_taken=sum(answer.time_taken for answer in submission.answers),
-        status="completed"
+        time_taken=total_time,
+        status="completed",
+        completed_at=datetime.now(timezone.utc)
     )
     
     db.add(quiz_session)
@@ -451,6 +723,7 @@ def submit_quiz(
     
     # Update quiz status
     quiz.status = "completed"
+    quiz.completed_at = datetime.now(timezone.utc)
     
     # Update user progress based on quiz performance
     if score_result["percentage"] >= 80:
@@ -473,7 +746,7 @@ def submit_quiz(
         "percentage": score_result["percentage"],
         "correct_answers": len([r for r in score_result["detailed_results"] if r["is_correct"]]),
         "total_questions": len(score_result["detailed_results"]),
-        "time_taken": quiz_session.time_taken,
+        "time_taken": total_time,
         "detailed_results": score_result["detailed_results"],
         "progress_updated": new_progress,
         "message": f"Quiz completed! Your {quiz.subject} progress increased by {progress_increase}%"

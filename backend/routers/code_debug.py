@@ -8,7 +8,7 @@ from sqlalchemy import desc
 from db import get_db
 from models.user import User
 from models.code_session import CodeSession
-from datetime import datetime
+from datetime import datetime, timezone
 import re
 
 router = APIRouter(prefix="/code")
@@ -138,7 +138,7 @@ def debug_code(body: CodeBody, llm: GeminiService = Depends(get_llm), db: Sessio
             response=llm_response,
             response_roman=response_roman,
             language=body.language,
-            created_at=datetime.utcnow()
+            created_at=datetime.now(timezone.utc)
         )
         
         db.add(code_session)

@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { MdClose, MdMessage, MdCalendarToday, MdMenuBook, MdAccessTime, MdCode, MdCalculate, MdEdit, MdScience } from 'react-icons/md';
 import api from '../services/api';
 import { toast } from 'react-toastify';
+import { formatRelativeTime, formatTime } from '../utils/timeUtils';
 
 const HistoryPanel = ({ setCurrentSessionId, setShowHistoryPanel, currentSessionId, setCurrentView }) => {
   const [sessions, setSessions] = useState([]);
@@ -36,15 +37,7 @@ const HistoryPanel = ({ setCurrentSessionId, setShowHistoryPanel, currentSession
   };
 
   const formatDate = (dateString) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffTime = Math.abs(now - date);
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    
-    if (diffDays === 1) return 'Today';
-    if (diffDays === 2) return 'Yesterday';
-    if (diffDays <= 7) return `${diffDays} days ago`;
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return formatRelativeTime(dateString);
   };
 
   const getSubjectIcon = (subject) => {
@@ -150,10 +143,7 @@ const HistoryPanel = ({ setCurrentSessionId, setShowHistoryPanel, currentSession
                 <div className="flex items-center justify-between text-xs">
                   <div className="flex items-center text-gray-400">
                     <MdAccessTime size={12} className="mr-1" />
-                    {new Date(session.created_at).toLocaleTimeString('en-US', { 
-                      hour: '2-digit', 
-                      minute: '2-digit' 
-                    })}
+                    {formatTime(session.created_at)}
                   </div>
                   {session.id === currentSessionId && (
                     <div className="flex items-center text-blue-200">

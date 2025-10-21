@@ -6,7 +6,7 @@ from db import get_db
 from models import User, Session as DBSession, Message
 from routers.auth import get_current_user
 from services.gemini_service import GeminiService
-from datetime import datetime
+from datetime import datetime, timezone
 
 router = APIRouter(prefix="/sessions")
 
@@ -32,7 +32,7 @@ def create_session(body: SessionCreate, db: Session = Depends(get_db), current_u
         new_session = DBSession(
             user_id=current_user.id, 
             subject=body.subject, 
-            created_at=datetime.utcnow(),
+            created_at=datetime.now(timezone.utc),
             name="Untitled Session"  # Default, updated on first message
         )
         db.add(new_session)
@@ -76,7 +76,7 @@ def add_message(body: MessageAdd, llm: GeminiService = Depends(get_llm_service),
             raise HTTPException(status_code=404, detail="Session not found")
         
         # Add user prompt
-        user_msg = Message(session_id=body.session_id, role="user", content=body.prompt, timestamp=datetime.utcnow())
+        user_msg = Message(session_id=body.session_id, role="user", content=body.prompt, timestamp=datetime.now(timezone.utc))
         db.add(user_msg)
         db.commit()
         
@@ -91,7 +91,7 @@ def add_message(body: MessageAdd, llm: GeminiService = Depends(get_llm_service),
         response = llm.generate_response(body.prompt, session.subject, language="auto")
         
         # Add assistant response
-        assistant_msg = Message(session_id=body.session_id, role="assistant", content=response, timestamp=datetime.utcnow())
+        assistant_msg = Message(session_id=body.session_id, role="assistant", content=response, timestamp=datetime.now(timezone.utc))
         db.add(assistant_msg)
         db.commit()
 
@@ -103,7 +103,7 @@ def add_message(body: MessageAdd, llm: GeminiService = Depends(get_llm_service),
                 "subject": session.subject,
                 "prompt": body.prompt[:200],
                 "response": response[:200],
-                "ts": datetime.utcnow().isoformat()
+                "ts": datetime.now(timezone.utc).isoformat()
             })
             if len(hist) > 50:
                 hist = hist[-50:]

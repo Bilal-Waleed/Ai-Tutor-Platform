@@ -18,6 +18,14 @@ import QuizAnalytics from './components/QuizAnalytics';
 import { toast } from 'react-toastify';
 import { Menu, X } from 'lucide-react';
 
+// Protected Route Component for logged-in users
+const ProtectedRoute = ({ children, isLoggedIn }) => {
+  if (isLoggedIn) {
+    return <Navigate to="/" replace />;
+  }
+  return children;
+};
+
 function App() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -92,6 +100,7 @@ function App() {
   const loadMessages = async (sessionId, newPage = 1) => {
     try {
       const res = await api.get(`/api/sessions/messages/${sessionId}`, { params: { page: newPage, limit: 10 } });
+      
       if (res.data.length === 0 && newPage === 1) return false;
       
       const newMsgs = res.data.reverse();
@@ -214,7 +223,11 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Login setIsLoggedIn={setIsLoggedIn} clearLocalStorage={clearLocalStorage} />} />
+        <Route path="/login" element={
+          <ProtectedRoute isLoggedIn={isLoggedIn}>
+            <Login setIsLoggedIn={setIsLoggedIn} clearLocalStorage={clearLocalStorage} />
+          </ProtectedRoute>
+        } />
         <Route path="/" element={isLoggedIn ? (
           <div className="h-screen bg-gray-900 text-white flex relative">
             {/* Mobile Sidebar Overlay */}

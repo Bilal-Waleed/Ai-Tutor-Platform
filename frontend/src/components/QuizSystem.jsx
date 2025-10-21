@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { MdQuiz, MdTimer, MdCheckCircle, MdCancel, MdRefresh, MdTrendingUp, MdLightbulbOutline } from 'react-icons/md';
 import api from '../services/api';
 import { toast } from 'react-toastify';
+import { formatDuration, formatDateTime as formatDateTimeUtil } from '../utils/timeUtils';
 
 const QuizSystem = ({ setCurrentView }) => {
   const [currentQuiz, setCurrentQuiz] = useState(null);
@@ -12,6 +13,8 @@ const QuizSystem = ({ setCurrentView }) => {
   const [quizStatus, setQuizStatus] = useState('idle'); // idle, active, completed
   const [quizResult, setQuizResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [quizStartTime, setQuizStartTime] = useState(null);
+  const [currentQuestionStartTime, setCurrentQuestionStartTime] = useState(null);
   const [recommendations, setRecommendations] = useState([]);
 
   useEffect(() => {
@@ -57,6 +60,8 @@ const QuizSystem = ({ setCurrentView }) => {
       setQuizStatus('active');
       setCurrentQuestionIndex(0);
       setAnswers({});
+      setQuizStartTime(Date.now());
+      setCurrentQuestionStartTime(Date.now());
       
       toast.success(`Quiz created! ${quizData.total_questions} questions, ${Math.floor(quizData.time_limit / 60)} minutes`);
     } catch (error) {
@@ -75,13 +80,43 @@ const QuizSystem = ({ setCurrentView }) => {
 
   const nextQuestion = () => {
     if (currentQuestionIndex < questions.length - 1) {
+      // Record time spent on current question
+      const timeSpent = Math.floor((Date.now() - currentQuestionStartTime) / 1000);
+      const currentQuestion = questions[currentQuestionIndex];
+      if (answers[currentQuestion.id]) {
+        // Update the answer with time taken
+        setAnswers(prev => ({
+          ...prev,
+          [currentQuestion.id]: {
+            answer: prev[currentQuestion.id],
+            time_taken: timeSpent
+          }
+        }));
+      }
+      
       setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setCurrentQuestionStartTime(Date.now());
     }
   };
 
   const previousQuestion = () => {
     if (currentQuestionIndex > 0) {
+      // Record time spent on current question
+      const timeSpent = Math.floor((Date.now() - currentQuestionStartTime) / 1000);
+      const currentQuestion = questions[currentQuestionIndex];
+      if (answers[currentQuestion.id]) {
+        // Update the answer with time taken
+        setAnswers(prev => ({
+          ...prev,
+          [currentQuestion.id]: {
+            answer: prev[currentQuestion.id],
+            time_taken: timeSpent
+          }
+        }));
+      }
+      
       setCurrentQuestionIndex(currentQuestionIndex - 1);
+      setCurrentQuestionStartTime(Date.now());
     }
   };
 
@@ -89,15 +124,37 @@ const QuizSystem = ({ setCurrentView }) => {
     try {
       setLoading(true);
       
-      const quizAnswers = Object.entries(answers).map(([questionId, answer]) => ({
-        question_id: parseInt(questionId),
-        user_answer: answer,
-        time_taken: 0 // Could implement per-question timing
-      }));
+      // Calculate total time taken
+      const totalTimeTaken = Math.floor((Date.now() - quizStartTime) / 1000);
+      
+      const quizAnswers = Object.entries(answers).map(([questionId, answer]) => {
+        // Handle both string answers and object answers with time_taken
+        let answerText = '';
+        let timeTaken = 0;
+        
+        if (typeof answer === 'string') {
+          answerText = answer;
+        } else if (typeof answer === 'object' && answer !== null) {
+          answerText = answer.answer || answer.user_answer || '';
+          timeTaken = answer.time_taken || 0;
+        } else {
+          answerText = '';
+        }
+        
+        // Ensure answerText is a string
+        answerText = String(answerText || '');
+        
+        return {
+          question_id: parseInt(questionId),
+          user_answer: answerText,
+          time_taken: parseInt(timeTaken) || 0
+        };
+      });
 
       const response = await api.post('/api/quiz/submit', {
         quiz_id: currentQuiz.quiz_id,
-        answers: quizAnswers
+        answers: quizAnswers,
+        total_time_taken: totalTimeTaken
       });
 
       setQuizResult(response.data);
@@ -124,9 +181,11 @@ const QuizSystem = ({ setCurrentView }) => {
   };
 
   const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return formatDuration(seconds);
+  };
+
+  const formatDateTime = (dateString) => {
+    return formatDateTimeUtil(dateString);
   };
 
   const getDifficultyColor = (difficulty) => {
@@ -155,10 +214,13 @@ const QuizSystem = ({ setCurrentView }) => {
           <MdCheckCircle className="w-16 h-16 text-green-400 mx-auto mb-4" />
           <h2 className="text-2xl font-bold text-white mb-2">Quiz Completed!</h2>
           <div className="text-4xl font-bold text-blue-400 mb-2">
-            {quizResult.percentage.toFixed(1)}%
+            {Math.min(100, quizResult.percentage).toFixed(1)}%
           </div>
           <p className="text-gray-300">
             {quizResult.correct_answers} out of {quizResult.total_questions} questions correct
+          </p>
+          <p className="text-sm text-gray-400 mt-2">
+            Time taken: {formatTime(quizResult.time_taken)}
           </p>
         </div>
 
@@ -215,7 +277,7 @@ const QuizSystem = ({ setCurrentView }) => {
             Take Another Quiz
           </button>
           <button
-            onClick={() => setCurrentView('dashboard')}
+            onClick={() => setCurrentView('quiz-analytics')}
             className="flex-1 bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg text-white transition-colors"
           >
             View Dashboard
@@ -278,7 +340,7 @@ const QuizSystem = ({ setCurrentView }) => {
                     type="radio"
                     name={`question_${currentQuestion.id}`}
                     value={option}
-                    checked={answers[currentQuestion.id] === option}
+                    checked={typeof answers[currentQuestion.id] === 'string' ? answers[currentQuestion.id] === option : answers[currentQuestion.id]?.answer === option}
                     onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
                     className="mr-2 lg:mr-3 text-blue-500"
                   />
@@ -289,7 +351,7 @@ const QuizSystem = ({ setCurrentView }) => {
           ) : (
             <div className="space-y-4">
               <textarea
-                value={answers[currentQuestion.id] || ''}
+                value={typeof answers[currentQuestion.id] === 'string' ? answers[currentQuestion.id] || '' : answers[currentQuestion.id]?.answer || ''}
                 onChange={(e) => handleAnswerChange(currentQuestion.id, e.target.value)}
                 placeholder="Enter your answer here..."
                 className="w-full p-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:border-blue-500 focus:outline-none resize-none text-sm lg:text-base"

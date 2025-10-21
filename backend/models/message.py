@@ -1,6 +1,6 @@
 from sqlalchemy import Column, Integer, String, ForeignKey, DateTime
 from .base import Base  # Shared Base
-from datetime import datetime
+from datetime import datetime, timezone
 
 class Message(Base):
     __tablename__ = "messages"
@@ -8,4 +8,4 @@ class Message(Base):
     session_id = Column(Integer, ForeignKey("sessions.id", ondelete="CASCADE"), nullable=False)
     role = Column(String, nullable=False)
     content = Column(String, nullable=False)
-    timestamp = Column(DateTime, default=datetime.utcnow)
+    timestamp = Column(DateTime, default=lambda: datetime.now(timezone.utc))

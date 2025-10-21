@@ -42,7 +42,7 @@ const QuizAnalytics = ({ setCurrentView }) => {
 
       // Calculate overall stats
       const totalQuizzes = quizHistory.length;
-      const averageScore = totalQuizzes > 0 ? quizHistory.reduce((sum, quiz) => sum + quiz.percentage, 0) / totalQuizzes : 0;
+      const averageScore = totalQuizzes > 0 ? Math.min(100, quizHistory.reduce((sum, quiz) => sum + Math.min(100, quiz.percentage), 0) / totalQuizzes) : 0;
 
       // Find best subject
       const subjectScores = {};

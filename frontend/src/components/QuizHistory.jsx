@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { MdHistory, MdTrendingUp, MdBarChart, MdRefresh, MdCheckCircle, MdCancel, MdTimer, MdQuiz, MdEmojiEmotions, MdThumbUp, MdTrendingUp as MdTrendingUpIcon, MdFitnessCenter } from 'react-icons/md';
 import api from '../services/api';
 import { toast } from 'react-toastify';
+import { formatDateTime as formatDateTimeUtil, formatDuration } from '../utils/timeUtils';
 
 const QuizHistory = ({ setCurrentView }) => {
   const [quizHistory, setQuizHistory] = useState([]);
@@ -16,6 +17,14 @@ const QuizHistory = ({ setCurrentView }) => {
   useEffect(() => {
     fetchQuizHistory();
   }, []);
+
+  const formatDateTime = (dateString) => {
+    return formatDateTimeUtil(dateString);
+  };
+
+  const formatTime = (seconds) => {
+    return formatDuration(seconds);
+  };
 
   const fetchQuizHistory = async () => {
     try {
@@ -90,19 +99,7 @@ const QuizHistory = ({ setCurrentView }) => {
   };
 
   const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
-  const formatTime = (seconds) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
+    return formatDateTime(dateString);
   };
 
   if (loading) {
@@ -243,7 +240,7 @@ const QuizHistory = ({ setCurrentView }) => {
                   </div>
                   <div className="text-right">
                     <div className={`text-3xl font-bold ${getScoreColor(quiz.percentage)}`}>
-                      {quiz.percentage.toFixed(1)}%
+                      {Math.min(100, quiz.percentage).toFixed(1)}%
                     </div>
                     <div className="text-gray-400 text-sm">
                       {formatTime(quiz.time_taken)}

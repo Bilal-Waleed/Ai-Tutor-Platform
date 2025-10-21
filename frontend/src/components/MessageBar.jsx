@@ -8,9 +8,10 @@ const MessageBar = ({ input, setInput, sendMessage }) => {
 
   const handleSend = async () => {
     if (input.trim()) {
+      const messageText = input.trim();
+      setInput(''); // Clear input immediately
       try {
-        await sendMessage(input);
-        setInput('');
+        await sendMessage(messageText);
       } catch (error) {
         // Check if it's a quota exceeded error
         if (error.response?.data?.response?.includes('high demand') || 
