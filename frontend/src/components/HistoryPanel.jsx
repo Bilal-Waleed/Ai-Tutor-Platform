@@ -5,10 +5,11 @@ import api from '../services/api';
 import { toast } from 'react-toastify';
 import { formatRelativeTime, formatTime } from '../utils/timeUtils';
 
-const HistoryPanel = ({ setCurrentSessionId, setShowHistoryPanel, currentSessionId, setCurrentView }) => {
+const HistoryPanel = ({ setCurrentSessionId, setShowHistoryPanel, currentSessionId, setCurrentView, loadSessionMessages }) => {
   const [sessions, setSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [loadingSession, setLoadingSession] = useState(null);
 
   useEffect(() => {
     const fetchSessions = async () => {
@@ -30,10 +31,29 @@ const HistoryPanel = ({ setCurrentSessionId, setShowHistoryPanel, currentSession
   }, []);
 
   const loadSession = async (id) => {
-    setCurrentSessionId(id);
-    setCurrentView('chat');
-    setShowHistoryPanel(false);
-    toast.success('Session loaded!');
+    try {
+      setLoadingSession(id);
+      setCurrentSessionId(id);
+      setCurrentView('chat');
+      
+      // Load messages for this session
+      if (loadSessionMessages) {
+        const loaded = await loadSessionMessages(id);
+        if (loaded) {
+          setShowHistoryPanel(false);
+          toast.success('Session loaded!');
+        } else {
+          toast.error('No messages found in this session');
+        }
+      } else {
+        setShowHistoryPanel(false);
+        toast.success('Session loaded!');
+      }
+    } catch (error) {
+      toast.error('Failed to load session: ' + (error.message || 'Unknown error'));
+    } finally {
+      setLoadingSession(null);
+    }
   };
 
   const formatDate = (dateString) => {
@@ -113,9 +133,11 @@ const HistoryPanel = ({ setCurrentSessionId, setShowHistoryPanel, currentSession
             sessions.map(session => (
               <div 
                 key={session.id} 
-                onClick={() => loadSession(session.id)} 
+                onClick={() => !loadingSession && loadSession(session.id)} 
                 className={`cursor-pointer p-3 lg:p-4 rounded-xl border-2 transition-all duration-200 hover:shadow-lg ${
-                  session.id === currentSessionId 
+                  loadingSession === session.id
+                    ? 'bg-gray-600 border-gray-500 text-gray-400 cursor-wait'
+                    : session.id === currentSessionId 
                     ? 'bg-gradient-to-r from-blue-500 to-blue-600 border-blue-400 text-white shadow-lg' 
                     : 'bg-gray-700 border-gray-600 hover:bg-gray-600 hover:border-gray-500 text-gray-300'
                 }`}
@@ -145,12 +167,17 @@ const HistoryPanel = ({ setCurrentSessionId, setShowHistoryPanel, currentSession
                     <MdAccessTime size={12} className="mr-1" />
                     {formatTime(session.created_at)}
                   </div>
-                  {session.id === currentSessionId && (
+                  {loadingSession === session.id ? (
+                    <div className="flex items-center text-gray-400">
+                      <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-400 mr-1"></div>
+                      Loading...
+                    </div>
+                  ) : session.id === currentSessionId ? (
                     <div className="flex items-center text-blue-200">
                       <div className="w-2 h-2 bg-blue-200 rounded-full mr-1"></div>
                       Active
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             ))

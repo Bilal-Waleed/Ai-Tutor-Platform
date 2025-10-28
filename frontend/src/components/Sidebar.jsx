@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import RecommendationsWidget from './RecommendationsWidget';
 
-const Sidebar = ({ setCurrentView, setShowSubjectModal, setIsLoggedIn, setShowProgressModal, setShowHistoryPanel, startNewChat, currentView, setSidebarOpen, currentSubject }) => {
+const Sidebar = ({ setCurrentView, setShowSubjectModal, setIsLoggedIn, setShowProgressModal, setShowHistoryPanel, startNewChat, currentView, setSidebarOpen, currentSubject, userPreferredSubject, setSubjectModalContext }) => {
   const navigate = useNavigate();
 
   const handleLogout = () => {
@@ -17,7 +17,7 @@ const Sidebar = ({ setCurrentView, setShowSubjectModal, setIsLoggedIn, setShowPr
   const menuItems = [
     { id: 'chat', icon: MdMessage, label: 'Chat', action: () => { setCurrentView('chat'); setSidebarOpen?.(false); } },
     { id: 'history', icon: MdHistory, label: 'Chat History', action: () => { setShowHistoryPanel(true); setSidebarOpen?.(false); } },
-    { id: 'subject', icon: MdMenuBook, label: 'Subject', action: () => { setShowSubjectModal(true); setSidebarOpen?.(false); } },
+    { id: 'subject', icon: MdMenuBook, label: 'Subject', action: () => { setSubjectModalContext('chat'); setShowSubjectModal(true); setSidebarOpen?.(false); } },
     { id: 'quiz-analytics', icon: MdBarChart, label: 'Quiz Analytics', action: () => { setCurrentView('quiz-analytics'); setSidebarOpen?.(false); } },
     { id: 'quiz-history', icon: MdHistory, label: 'Quiz History', action: () => { setCurrentView('quiz-history'); setSidebarOpen?.(false); } },
     { id: 'code', icon: MdCode, label: 'Code Debug', action: () => { setCurrentView('code'); setSidebarOpen?.(false); } },
@@ -50,7 +50,8 @@ const Sidebar = ({ setCurrentView, setShowSubjectModal, setIsLoggedIn, setShowPr
           setCurrentView={setCurrentView}
           setShowSubjectModal={setShowSubjectModal}
           startNewChat={startNewChat}
-          currentSubject={currentSubject}
+          recommendationSubject={userPreferredSubject}
+          setSubjectModalContext={setSubjectModalContext}
         />
       </div>
 

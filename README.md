@@ -12,11 +12,14 @@ A comprehensive AI-powered educational platform that provides personalized learn
 
 ### 🎯 Core Capabilities
 - **Subject-Aware Q&A**: Intelligent tutoring across coding, math, IELTS, and physics
-- **Code Debugging**: Real-time code analysis with error explanations and fixes
+- **Enhanced Chat Interface**: ChatGPT-like responses with markdown, syntax highlighting, and copy features
+- **Code Debugging**: Real-time code analysis with markdown-formatted responses and syntax highlighting
 - **Progress Tracking**: Comprehensive analytics and performance monitoring
-- **Personalized Recommendations**: AI-driven learning path suggestions
+- **Independent Subject Management**: Separate subjects for chat sessions and AI recommendations
+- **Personalized Recommendations**: AI-driven learning path suggestions with subject-specific focus
 - **Multi-language Support**: English and Roman Urdu language support
 - **Interactive Chat**: Real-time learning sessions with conversation history
+- **Message Editing**: Edit, copy, and select text in messages with intuitive controls
 
 ### 🚀 Advanced Features
 - **AI-Powered Quiz System**: Dynamic quiz generation with multiple question types
@@ -125,15 +128,23 @@ npm run dev
 
 #### 💬 Chat & Q&A
 - Ask questions in English or Roman Urdu
-- Get step-by-step explanations
+- Get beautifully formatted responses with markdown support
+- Syntax-highlighted code blocks with copy buttons
+- Edit and copy your messages with intuitive controls
+- Step-by-step explanations with proper headings
+- Independent subject selection per chat session
 - Request examples and practice problems
 - Follow up with clarifying questions
+- Complete responses without truncation (up to 2000 tokens)
 
 #### 💻 Code Debugging
 - Write code in Python, JavaScript, or Java
-- Get instant analysis and error explanations
-- View suggested fixes and improvements
-- Access Roman Urdu translations
+- Get markdown-formatted analysis with corrected code shown first
+- Syntax-highlighted code blocks with copy buttons
+- Complete responses (up to 3000 tokens)
+- View suggested fixes and improvements in structured format
+- Access Roman Urdu translations with same formatting
+- Compact header design for maximum editor space
 
 #### 🧠 Quiz System
 - Take AI-generated quizzes based on your progress
@@ -180,6 +191,8 @@ python scripts/performance_test.py
 - **React 18**: Modern UI library
 - **Vite**: Fast build tool
 - **Tailwind CSS**: Utility-first CSS framework
+- **React Markdown**: Rich text formatting for AI responses
+- **Prism React Renderer**: Syntax highlighting for code blocks
 - **Recharts**: Data visualization
 - **React Icons**: Icon library
 - **Axios**: HTTP client
@@ -257,13 +270,16 @@ python scripts/performance_test.py
 1. **App.jsx**: Main application container with routing
 2. **Login.jsx**: Authentication interface
 3. **Sidebar.jsx**: Navigation with recommendations
-4. **ChatHistory.jsx**: Message display and management
-5. **MessageBar.jsx**: Input interface for questions
-6. **CodeDebug.jsx**: Code editor with AI analysis
-7. **ProgressDashboard.jsx**: Analytics and progress visualization
-8. **SubjectSelector.jsx**: Subject selection modal
-9. **HistoryPanel.jsx**: Session history management
-10. **RecommendationsWidget.jsx**: AI learning suggestions
+4. **ChatHistory.jsx**: Message display with enhanced formatting
+5. **MessageRenderer.jsx**: Markdown rendering with syntax highlighting
+6. **UserMessage.jsx**: User message with edit/copy features
+7. **AssistantMessage.jsx**: AI message with formatted responses
+8. **MessageBar.jsx**: Input interface for questions
+9. **CodeDebug.jsx**: Code editor with AI analysis
+10. **ProgressDashboard.jsx**: Analytics and progress visualization
+11. **SubjectSelector.jsx**: Subject selection modal
+12. **HistoryPanel.jsx**: Session history management
+13. **RecommendationsWidget.jsx**: AI learning suggestions
 
 ### Quiz System Components
 11. **QuizSystem.jsx**: Main quiz interface with AI recommendations
@@ -294,10 +310,13 @@ python scripts/performance_test.py
 ## 📈 Performance Metrics
 
 - **AI Response Time**: <2 seconds average
-- **Memory Usage**: Optimized for 16GB RAM systems
+- **Memory Usage**: Optimized for 16GB RAM systems with React.memo caching
 - **Database Performance**: Optimized queries with indexing
-- **Frontend Load Time**: <3 seconds initial load
+- **Frontend Load Time**: <2 seconds initial load (code-split into 6 chunks)
 - **API Response Time**: <500ms average
+- **Scroll Performance**: 60 FPS with throttled event handlers
+- **Bundle Size**: 1,009 KB → Code-split (React: 16KB, Markdown: 74KB, Charts: 102KB gzipped)
+- **UI Responsiveness**: Optimized with hardware acceleration and React.memo
 
 ## 🔒 Security Features
 

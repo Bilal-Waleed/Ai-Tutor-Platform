@@ -1,5 +1,29 @@
 @import "tailwindcss";
 
+/* Performance optimizations - Hardware acceleration for key elements only */
+.custom-scroll,
+.prose,
+.message-enter,
+[class*="transition-"],
+[class*="animate-"] {
+	-webkit-transform: translateZ(0);
+	transform: translateZ(0);
+	-webkit-backface-visibility: hidden;
+	backface-visibility: hidden;
+}
+
+/* Smooth scrolling with performance */
+html {
+	scroll-behavior: smooth;
+}
+
+/* Optimize text rendering */
+body {
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
 /* Themed custom scrollbar */
 .custom-scroll::-webkit-scrollbar {
 	width: 12px;
@@ -148,4 +172,283 @@
 		padding-top: max(16px, env(safe-area-inset-top));
 		padding-bottom: max(16px, env(safe-area-inset-bottom));
 	}
+}
+
+/* Markdown & Code Block Styling */
+.prose {
+	max-width: none;
+	color: #e5e7eb;
+}
+
+.prose code {
+	font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
+	font-size: 0.875rem;
+}
+
+.prose pre {
+	margin: 0 !important;
+	border-radius: 0.5rem;
+	overflow-x: auto;
+}
+
+.prose pre code {
+	font-size: 0.875rem;
+	line-height: 1.5;
+	display: block;
+}
+
+/* Selection Color */
+::selection {
+	background-color: rgba(59, 130, 246, 0.5);
+	color: white;
+}
+
+::-moz-selection {
+	background-color: rgba(59, 130, 246, 0.5);
+	color: white;
+}
+
+/* Smooth transitions for hover effects */
+button {
+	transition: all 0.2s ease-in-out;
+}
+
+/* Message animations */
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+		transform: translateY(10px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.message-enter {
+	animation: fadeIn 0.3s ease-out;
+}
+
+/* Copy button hover effect */
+.copy-button {
+	opacity: 0;
+	transition: opacity 0.2s ease-in-out;
+}
+
+.group:hover .copy-button {
+	opacity: 1;
+}
+
+/* Responsive text sizing */
+@media (max-width: 640px) {
+	.prose code {
+		font-size: 0.75rem;
+	}
+	
+	.prose pre code {
+		font-size: 0.75rem;
+	}
+}
+
+/* Improved table styling */
+table {
+	border-collapse: collapse;
+	width: 100%;
+}
+
+th, td {
+	border: 1px solid #374151;
+	padding: 0.5rem;
+}
+
+th {
+	background-color: #1f2937;
+	font-weight: 600;
+}
+
+/* List styling improvements */
+.prose ul, .prose ol {
+	padding-left: 1.5rem;
+	margin-bottom: 1rem;
+}
+
+.prose li {
+	margin-bottom: 0.5rem;
+	line-height: 1.6;
+}
+
+/* Blockquote styling */
+blockquote {
+	font-style: italic;
+	border-left: 4px solid #3b82f6;
+	padding-left: 1rem;
+	margin: 1rem 0;
+	background-color: rgba(59, 130, 246, 0.1);
+	padding: 0.75rem 1rem;
+	border-radius: 0.25rem;
+}
+
+/* Link hover effects */
+a {
+	text-decoration: underline;
+	text-decoration-color: transparent;
+	transition: all 0.2s ease-in-out;
+	color: #60a5fa;
+}
+
+a:hover {
+	text-decoration-color: currentColor;
+	color: #93c5fd;
+}
+
+/* Heading styles */
+h1, h2, h3, h4, h5, h6 {
+	font-weight: 700;
+	line-height: 1.3;
+	margin-top: 1.5rem;
+	margin-bottom: 0.75rem;
+}
+
+h1 {
+	font-size: 1.875rem;
+	color: #f9fafb;
+}
+
+h2 {
+	font-size: 1.5rem;
+	color: #f3f4f6;
+}
+
+h3 {
+	font-size: 1.25rem;
+	color: #e5e7eb;
+}
+
+/* Code inline styling */
+code:not(pre code) {
+	background-color: #1f2937;
+	color: #60a5fa;
+	padding: 0.125rem 0.375rem;
+	border-radius: 0.25rem;
+	font-size: 0.875em;
+	font-weight: 500;
+}
+
+/* Horizontal rule styling */
+hr {
+	border: none;
+	border-top: 2px solid #374151;
+	margin: 2rem 0;
+}
+
+/* Strong/Bold text */
+strong {
+	font-weight: 700;
+	color: #f9fafb;
+}
+
+/* Emphasis/Italic text */
+em {
+	font-style: italic;
+	color: #d1d5db;
+}
+
+/* Better focus styles for inputs */
+textarea:focus,
+input:focus {
+	outline: none;
+	ring: 2px;
+	ring-color: #3b82f6;
+}
+
+/* Syntax highlighter improvements */
+.react-syntax-highlighter-line-number {
+	color: #6b7280 !important;
+	user-select: none;
+}
+
+/* Code block container */
+.code-block-container {
+	position: relative;
+	margin: 1rem 0;
+}
+
+/* Copy button for code blocks */
+.code-copy-button {
+	position: absolute;
+	top: 0.5rem;
+	right: 0.5rem;
+	opacity: 0;
+	transition: opacity 0.2s ease-in-out;
+}
+
+.code-block-container:hover .code-copy-button {
+	opacity: 1;
+}
+
+/* Paragraph spacing */
+p {
+	margin-bottom: 1rem;
+	line-height: 1.6;
+}
+
+/* Ordered list counter styling */
+ol {
+	counter-reset: item;
+}
+
+ol li {
+	counter-increment: item;
+}
+
+/* Better readability for long text */
+.prose {
+	text-rendering: optimizeLegibility;
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+}
+
+/* Optimize animations for 60fps */
+@media (prefers-reduced-motion: no-preference) {
+	* {
+		will-change: auto;
+	}
+	
+	.animate-spin,
+	.animate-pulse {
+		will-change: transform;
+	}
+}
+
+/* Prevent layout shifts */
+img, video {
+	max-width: 100%;
+	height: auto;
+}
+
+/* GPU acceleration for smooth scrolling */
+.custom-scroll {
+	will-change: scroll-position;
+	-webkit-overflow-scrolling: touch;
+}
+
+/* Optimize transitions */
+.transition-all,
+.transition-colors,
+.transition-opacity,
+.transition-transform {
+	transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Prevent text selection lag */
+.select-none {
+	-webkit-user-select: none;
+	-moz-user-select: none;
+	-ms-user-select: none;
+	user-select: none;
+}
+
+/* Optimize fixed elements */
+.fixed, .sticky {
+	will-change: transform;
 }

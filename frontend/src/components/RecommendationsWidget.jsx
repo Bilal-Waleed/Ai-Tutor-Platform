@@ -3,7 +3,7 @@ import { MdLightbulbOutline, MdTrendingUp, MdMenuBook, MdArrowForward, MdMessage
 import api from '../services/api';
 import { toast } from 'react-toastify';
 
-const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewChat, currentSubject }) => {
+const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewChat, recommendationSubject, setSubjectModalContext }) => {
   const [recommendations, setRecommendations] = useState('');
   const [progress, setProgress] = useState({});
   const [loading, setLoading] = useState(false);
@@ -11,14 +11,14 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
 
   useEffect(() => {
     fetchRecommendations();
-  }, [currentSubject]); // Re-fetch when subject changes
+  }, [recommendationSubject]); // Re-fetch when recommendation subject changes
 
   const fetchRecommendations = async () => {
     try {
       setLoading(true);
       const [recommendRes, progressRes] = await Promise.all([
         api.get('/api/recommend/', { 
-          params: currentSubject && currentSubject !== 'general' ? { subject: currentSubject } : {} 
+          params: recommendationSubject && recommendationSubject !== 'general' ? { subject: recommendationSubject } : {} 
         }),
         api.get('/api/recommend/progress')
       ]);
@@ -42,14 +42,15 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
         label: 'Start Learning',
         icon: MdBook,
         action: () => {
+          setSubjectModalContext('recommendation'); // Context: for recommendations
           setShowSubjectModal(true);
           toast.info('Select a subject to begin learning!');
         },
         color: 'text-blue-400'
       });
     } else {
-      // Use current subject if available, otherwise find weakest
-      const targetSubject = currentSubject && currentSubject !== 'general' ? currentSubject : 
+      // Use recommendation subject if available, otherwise find weakest
+      const targetSubject = recommendationSubject && recommendationSubject !== 'general' ? recommendationSubject : 
         subjects.reduce((min, subject) => 
           (progress[subject] || 0) < (progress[min] || 0) ? subject : min
         );
@@ -148,14 +149,25 @@ const RecommendationsWidget = ({ setCurrentView, setShowSubjectModal, startNewCh
         </button>
       </div>
 
-      {/* Current Subject Display */}
-      {currentSubject && currentSubject !== 'general' && (
+      {/* Current Recommendation Subject Display */}
+      {recommendationSubject && recommendationSubject !== 'general' && (
         <div className="mb-3 p-2 bg-blue-600/20 rounded-lg border border-blue-500/30">
-          <div className="flex items-center">
-            <MdBook className="w-4 h-4 text-blue-400 mr-2" />
-            <span className="text-xs text-blue-300 font-medium">
-              Current Subject: {currentSubject.charAt(0).toUpperCase() + currentSubject.slice(1)}
-            </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <MdBook className="w-4 h-4 text-blue-400 mr-2" />
+              <span className="text-xs text-blue-300 font-medium">
+                Focus: {recommendationSubject.charAt(0).toUpperCase() + recommendationSubject.slice(1)}
+              </span>
+            </div>
+            <button
+              onClick={() => {
+                setSubjectModalContext('recommendation');
+                setShowSubjectModal(true);
+              }}
+              className="text-xs text-blue-400 hover:text-blue-300 underline"
+            >
+              Change
+            </button>
           </div>
         </div>
       )}

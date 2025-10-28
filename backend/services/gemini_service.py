@@ -241,15 +241,23 @@ class GeminiService:
 IMPORTANT INSTRUCTIONS:
 1. Reply ONLY in {reply_language} - use Latin script for Roman Urdu, NO Arabic/Urdu script
 2. Be educational and helpful
-3. Provide step-by-step explanations when detailed answers are requested
-4. Keep responses concise for simple questions
-5. Do NOT repeat instructions or add meta-commentary
-6. Focus on the student's learning needs
+3. **Use Markdown formatting** for better readability:
+   - Use **bold** for important terms
+   - Use `code` for inline code or technical terms
+   - Use ```language for code blocks (e.g., ```python, ```javascript)
+   - Use # for main headings, ## for subheadings, ### for smaller headings
+   - Use numbered lists (1. 2. 3.) for steps
+   - Use bullet points (-) for lists
+   - Use > for important notes or quotes
+4. Provide step-by-step explanations when detailed answers are requested
+5. Keep responses concise for simple questions
+6. Do NOT repeat instructions or add meta-commentary
+7. Focus on the student's learning needs
 
 {"Context (if relevant):" if context else ""}
 {context if context else ""}
 
-{"Keep response brief (1-2 sentences)" if is_short else "Provide detailed step-by-step explanation with examples" if is_detailed else "Provide clear, helpful explanation"}
+{"Keep response brief (1-2 sentences)" if is_short else "Provide detailed step-by-step explanation with examples in markdown format" if is_detailed else "Provide clear, helpful explanation using markdown formatting"}
 
 Student Question: {prompt}"""
 
@@ -260,7 +268,7 @@ Student Question: {prompt}"""
                 response = self.model.generate_content(
                     system_prompt,
                     generation_config=genai.types.GenerationConfig(
-                        max_output_tokens=300 if is_short else (500 if is_detailed else 400),
+                        max_output_tokens=800 if is_short else (2000 if is_detailed else 1500),
                         temperature=0.7,
                         top_p=0.8,
                         top_k=40,
@@ -292,7 +300,7 @@ Student Question: {prompt}"""
                         enhanced = self.model.generate_content(
                             enhance_prompt,
                             generation_config=genai.types.GenerationConfig(
-                                max_output_tokens=400,
+                                max_output_tokens=1500,
                                 temperature=0.6,
                             )
                         )
@@ -329,23 +337,50 @@ Student Question: {prompt}"""
     def analyze_code(self, code: str, language: str = "python") -> Dict[str, str]:
         """Analyze code for errors and provide suggestions."""
         try:
-            prompt = f"""Analyze this {language} code and provide:
-1. Any syntax or logical errors
-2. Suggestions for improvement
-3. Best practices recommendations
-4. A corrected version if there are errors
+            prompt = f"""Analyze this {language} code and provide a detailed, COMPLETE analysis.
+
+**IMPORTANT**: Use **Markdown formatting** for better readability:
+- Use **bold** for important terms (errors, warnings, etc.)
+- Use `code` for inline code references
+- Use ```{language} for code blocks with proper syntax
+- Use ## for main sections, ### for subsections
+- Use numbered lists (1. 2. 3.) for steps
+- Use bullet points (-) for suggestions
+- Use > for important notes
 
 Code to analyze:
 ```{language}
 {code}
 ```
 
-Provide your analysis in a clear, educational format."""
+**CRITICAL**: Provide your response in this EXACT order:
+
+## ✅ Corrected Code
+```{language}
+(Show the fully corrected, working version here - COMPLETE code, not truncated)
+```
+
+## 📊 Analysis Summary
+Brief overview of what was found and fixed.
+
+## ❌ Errors Found
+List all syntax or logical errors with line numbers if applicable.
+
+## 💡 Suggestions for Improvement
+Provide specific, actionable suggestions.
+
+## 🎯 Best Practices
+Recommend best practices for this code.
+
+## 📝 Explanation
+Detailed explanation of changes made and why.
+
+**Make sure to provide COMPLETE response, do not truncate!**"""
 
             response = self.model.generate_content(
                 prompt,
                 generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=600,
+                    max_output_tokens=3000,
                     temperature=0.3,
                 )
             )
@@ -353,17 +388,28 @@ Provide your analysis in a clear, educational format."""
             analysis = response.text.strip()
             
             # Generate Roman Urdu version
-            roman_prompt = f"""Translate this code analysis to Roman Urdu (Latin script only, no Arabic script):
+            roman_prompt = f"""Translate this code analysis to Roman Urdu (Latin script only, no Arabic script).
 
+**IMPORTANT**: 
+1. Use **Markdown formatting** in Roman Urdu
+2. Keep the SAME order (Corrected Code first, then explanation)
+3. Provide COMPLETE translation, do not truncate
+4. Use **bold** for important terms
+5. Use `code` for inline code
+6. Use ```{language} for code blocks
+7. Use ## for sections, ### for subsections
+
+Original Analysis:
 {analysis}
 
-Provide the same detailed analysis in Roman Urdu:"""
+Provide the COMPLETE detailed analysis in Roman Urdu with markdown formatting.
+**CRITICAL**: Response must be COMPLETE, not truncated!"""
 
             try:
                 roman_response = self.model.generate_content(
                     roman_prompt,
                     generation_config=genai.types.GenerationConfig(
-                        max_output_tokens=600,
+                        max_output_tokens=3000,
                         temperature=0.4,
                     )
                 )

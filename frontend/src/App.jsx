@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import Cookies from 'js-cookie';
 import { jwtDecode } from 'jwt-decode';
@@ -38,9 +38,12 @@ function App() {
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [sessionName, setSessionName] = useState('New Chat');
   const [responseLoading, setResponseLoading] = useState(false);
-  const [currentSubject, setCurrentSubject] = useState('general');
+  const [currentSubject, setCurrentSubject] = useState('general'); // Chat ka subject
+  const [userPreferredSubject, setUserPreferredSubject] = useState('general'); // User ka default subject (for recommendations)
   const [page, setPage] = useState(1);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
+  const [subjectModalContext, setSubjectModalContext] = useState('chat'); // 'chat' or 'recommendation'
   const chatContainerRef = useRef(null);
 
   useEffect(() => {
@@ -54,17 +57,25 @@ function App() {
             api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
             const userRes = await api.get('/api/auth/me');
             const userSubject = userRes.data.current_subject || 'general';
-            setCurrentSubject(userSubject);
+            setUserPreferredSubject(userSubject); // User ka preferred subject
+            setCurrentSubject(userSubject); // Initial chat subject bhi same
             
             const userId = decoded.sub;
             const stored = JSON.parse(localStorage.getItem(`appState_${userId}`) || '{}');
             if (stored.sessionId) {
               setCurrentSessionId(stored.sessionId);
               setCurrentSubject(stored.subject || userSubject);
+              // Load messages on initial mount only
               const loaded = await loadMessages(stored.sessionId, 1);
-              if (!loaded) startNewChat();
+              if (!loaded) {
+                startNewChat();
+              } else {
+                setIsInitialLoad(false);
+              }
             } else if (userSubject === 'general') {
+              setSubjectModalContext('chat'); // Context: for new chat
               setShowSubjectModal(true);
+              setIsInitialLoad(false);
             }
           } else {
             clearLocalStorage();
@@ -81,21 +92,34 @@ function App() {
   }, []);
 
   useEffect(() => {
-    if (currentSessionId) {
+    // Only load messages for pagination, not on initial session load
+    if (currentSessionId && !isInitialLoad && page > 1) {
       loadMessages(currentSessionId, page);
     }
-  }, [currentSessionId, page]);
+  }, [page]);
 
   useEffect(() => {
+    let scrollTimeout;
     const handleScroll = () => {
-      if (chatContainerRef.current && chatContainerRef.current.scrollTop === 0 && messages.length >= 10) {
-        setPage(prev => prev + 1);
-      }
+      // Throttle scroll event to prevent performance issues
+      if (scrollTimeout) return;
+      scrollTimeout = setTimeout(() => {
+        scrollTimeout = null;
+        if (chatContainerRef.current && chatContainerRef.current.scrollTop === 0 && messages.length >= 10) {
+          setPage(prev => prev + 1);
+        }
+      }, 200); // Throttle to 200ms
     };
+    
     const container = chatContainerRef.current;
-    if (container) container.addEventListener('scroll', handleScroll);
-    return () => container?.removeEventListener('scroll', handleScroll);
-  }, [messages]);
+    if (container) {
+      container.addEventListener('scroll', handleScroll, { passive: true });
+    }
+    return () => {
+      if (scrollTimeout) clearTimeout(scrollTimeout);
+      container?.removeEventListener('scroll', handleScroll);
+    };
+  }, [messages.length]); // Only depend on length, not entire messages array
 
   const loadMessages = async (sessionId, newPage = 1) => {
     try {
@@ -107,9 +131,16 @@ function App() {
       setMessages(prev => newPage > 1 ? [...newMsgs, ...prev] : newMsgs);
       
       const sessionRes = await api.get(`/api/sessions/${sessionId}`);
-      setSessionName(sessionRes.data.name || 'New Chat');
-      setCurrentSubject(sessionRes.data.subject || currentSubject);
-      persistData();
+      const sessionName = sessionRes.data.name || 'New Chat';
+      const sessionSubject = sessionRes.data.subject || currentSubject;
+      
+      setSessionName(sessionName);
+      setCurrentSubject(sessionSubject);
+      
+      // Only persist on initial page load, not pagination
+      if (newPage === 1) {
+        persistData(sessionId, sessionSubject);
+      }
       return true;
     } catch (err) {
       toast.error('Messages Load Error: ' + (err.response?.data?.detail || err.message));
@@ -117,7 +148,7 @@ function App() {
     }
   };
 
-  const sendMessage = async (text) => {
+  const sendMessage = useCallback(async (text) => {
     if (!text) return;
     if (currentSubject === 'general') {
       toast.warning('First select your subject!');
@@ -125,14 +156,15 @@ function App() {
       return;
     }
     setResponseLoading(true);
+    setIsInitialLoad(false); // Mark as no longer initial load after first message
     try {
       setMessages(prev => [...prev, { role: 'user', content: text }]);
       // Scroll to bottom after rendering the new user message
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         if (chatContainerRef.current) {
           chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
-      }, 0);
+      });
       let sessionId = currentSessionId;
       if (!sessionId) {
         const createRes = await api.post('/api/sessions/create', { subject: currentSubject });
@@ -148,11 +180,11 @@ function App() {
       }
       
       // Ensure view stays at the bottom when assistant responds
-      setTimeout(() => {
+      requestAnimationFrame(() => {
         if (chatContainerRef.current) {
           chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
-      }, 0);
+      });
       if (sessionName === 'New Chat') {
         setSessionName(res.data.session_name || 'Chat Session');
       }
@@ -164,15 +196,15 @@ function App() {
       setResponseLoading(false);
       persistData();
     }
-  };
+  }, [currentSubject, currentSessionId, sessionName]);
 
-  const persistData = () => {
+  const persistData = (sessionId = null, subject = null) => {
     const token = Cookies.get('token');
     if (token) {
       const userId = jwtDecode(token).sub;
       localStorage.setItem(`appState_${userId}`, JSON.stringify({
-        sessionId: currentSessionId,
-        subject: currentSubject,
+        sessionId: sessionId || currentSessionId,
+        subject: subject || currentSubject,
       }));
     }
   };
@@ -190,6 +222,7 @@ function App() {
     setCurrentSubject('general');
     setSessionName('New Chat');
     setPage(1);
+    setIsInitialLoad(true);
   };
 
   const startNewChat = async () => {
@@ -197,11 +230,13 @@ function App() {
     setCurrentSessionId(null);
     setSessionName('New Chat');
     setPage(1);
+    setIsInitialLoad(true);
     
     // Reset subject to general for new chat
     setCurrentSubject('general');
     
     // Always force subject selection for a new chat
+    setSubjectModalContext('chat'); // Context: for chat
     setShowSubjectModal(true);
     
     persistData();
@@ -211,6 +246,20 @@ function App() {
     setCurrentSubject(newSubject);
     persistData();
   };
+
+  const updateUserPreferredSubject = (newSubject) => {
+    setUserPreferredSubject(newSubject);
+    // Don't affect current chat subject
+  };
+
+  const handleEditMessage = useCallback((index, newContent) => {
+    // Update message locally
+    setMessages(prev => {
+      const updated = [...prev];
+      updated[index] = { ...updated[index], content: newContent };
+      return updated;
+    });
+  }, []);
 
   if (loading) {
     return (
@@ -245,17 +294,19 @@ function App() {
               ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
               lg:translate-x-0
             `}>
-              <Sidebar 
-                setCurrentView={setCurrentView}
-                setShowSubjectModal={setShowSubjectModal}
-                setIsLoggedIn={setIsLoggedIn}
-                setShowProgressModal={setShowProgressModal}
-                setShowHistoryPanel={setShowHistoryPanel}
-                startNewChat={startNewChat}
-                currentView={currentView}
-                setSidebarOpen={setSidebarOpen}
-                currentSubject={currentSubject}
-              />
+            <Sidebar 
+              setCurrentView={setCurrentView}
+              setShowSubjectModal={setShowSubjectModal}
+              setIsLoggedIn={setIsLoggedIn}
+              setShowProgressModal={setShowProgressModal}
+              setShowHistoryPanel={setShowHistoryPanel}
+              startNewChat={startNewChat}
+              currentView={currentView}
+              setSidebarOpen={setSidebarOpen}
+              currentSubject={currentSubject}
+              userPreferredSubject={userPreferredSubject}
+              setSubjectModalContext={setSubjectModalContext}
+            />
             </div>
 
             {/* Mobile Header */}
@@ -278,44 +329,58 @@ function App() {
                   setShowHistoryPanel={setShowHistoryPanel} 
                   currentSessionId={currentSessionId}
                   setCurrentView={setCurrentView}
+                  loadSessionMessages={async (sessionId) => {
+                    setIsInitialLoad(true);
+                    setPage(1);
+                    setCurrentSessionId(sessionId);
+                    const loaded = await loadMessages(sessionId, 1);
+                    if (loaded) {
+                      setIsInitialLoad(false);
+                      // persistData already called in loadMessages
+                    }
+                    return loaded;
+                  }}
                 />
               )}
               
               {currentView === 'chat' && (
                 <>
                   {/* Desktop Header */}
-                  <header className="hidden lg:block p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold text-xl relative shadow-lg">
+                  <header className="hidden lg:block px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white relative shadow-sm">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h1 className="text-xl font-bold">AI Tutor Chat</h1>
-                        <div className="text-sm mt-1 flex items-center space-x-4">
-                          <span className="bg-white/20 px-3 py-1 rounded-full">{sessionName}</span>
-                          <span className="bg-white/20 px-3 py-1 rounded-full">{currentSubject || 'No Subject Selected'}</span>
+                        <h1 className="text-base font-semibold mb-1">AI Tutor Chat</h1>
+                        <div className="flex items-center space-x-2 text-xs">
+                          <span className="bg-white/20 px-2 py-0.5 rounded-full">{sessionName}</span>
+                          <span className="bg-white/20 px-2 py-0.5 rounded-full">{currentSubject || 'No Subject'}</span>
                         </div>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
-                        <span className="text-sm">Online</span>
+                      <div className="flex items-center space-x-1.5">
+                        <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                        <span className="text-xs">Online</span>
                       </div>
                     </div>
                   </header>
 
                   {/* Mobile Chat Header */}
-                  <div className="lg:hidden bg-gray-800 p-4 border-b border-gray-700">
+                  <div className="lg:hidden bg-gray-800 px-4 py-2 border-b border-gray-700">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h2 className="text-lg font-semibold text-white">{sessionName}</h2>
-                        <p className="text-sm text-gray-400">{currentSubject || 'No Subject Selected'}</p>
+                        <h2 className="text-sm font-semibold text-white">{sessionName}</h2>
+                        <p className="text-xs text-gray-400 mt-0.5">{currentSubject || 'No Subject'}</p>
                       </div>
-                      <div className="flex items-center space-x-2">
-                        <div className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
+                      <div className="flex items-center space-x-1">
+                        <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
                         <span className="text-xs text-gray-400">Online</span>
                       </div>
                     </div>
                   </div>
 
-                  <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-900 custom-scroll">
-                    <ChatHistory messages={messages} />
+                  <div ref={chatContainerRef} className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-900 custom-scroll" style={{ contain: 'layout style paint' }}>
+                    <ChatHistory 
+                      messages={messages} 
+                      onEditMessage={handleEditMessage}
+                    />
                     {responseLoading && (
                       <div className="flex items-center space-x-2 p-3 text-gray-300">
                         <div className="flex items-start">
@@ -339,21 +404,26 @@ function App() {
             {showSubjectModal && (
               <SubjectSelector 
                 setShowSubjectModal={setShowSubjectModal} 
-                updateCurrentSubject={updateCurrentSubject}
+                updateCurrentSubject={subjectModalContext === 'chat' ? updateCurrentSubject : updateUserPreferredSubject}
+                context={subjectModalContext}
                 onSubjectChange={(newSubject) => {
-                  // This will trigger a re-render and refresh recommendations
-                  setCurrentSubject(newSubject);
+                  if (subjectModalContext === 'chat') {
+                    // Update chat subject
+                    setCurrentSubject(newSubject);
+                  } else {
+                    // Update recommendation subject only
+                    setUserPreferredSubject(newSubject);
+                  }
                 }}
                 onModalClose={() => {
-                  // When modal is closed without selecting, ensure subject is general
-                  if (currentSubject === 'general') {
-                    // If still general, that's fine - user needs to select subject
+                  // When modal is closed without selecting
+                  if (subjectModalContext === 'chat' && currentSubject === 'general') {
                     toast.info('Please select a subject to start chatting');
                   }
                 }}
               />
             )}
-            {showProgressModal && <ProgressDashboard setShowProgressModal={setShowProgressModal} setCurrentView={setCurrentView} />}
+            {showProgressModal && <ProgressDashboard setShowProgressModal={setShowProgressModal} setCurrentView={setCurrentView} userPreferredSubject={userPreferredSubject} />}
             <ToastProvider />
           </div>
         ) : <Navigate to="/login" />} />

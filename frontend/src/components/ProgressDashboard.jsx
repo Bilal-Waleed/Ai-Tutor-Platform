@@ -4,7 +4,7 @@ import { MdTrendingUp, MdMenuBook, MdAccessTime, MdCheckCircle, MdBarChart, MdQu
 import api from '../services/api';
 import { toast } from 'react-toastify';
 
-const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
+const ProgressDashboard = ({ setShowProgressModal, setCurrentView, userPreferredSubject }) => {
   const [progress, setProgress] = useState({});
   const [recommendations, setRecommendations] = useState('');
   const [loading, setLoading] = useState(true);
@@ -22,7 +22,7 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
 
   useEffect(() => {
     fetchDashboardData();
-  }, []);
+  }, [userPreferredSubject]); // Re-fetch when recommendation subject changes
 
   const fetchDashboardData = async () => {
     try {
@@ -38,7 +38,9 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
       }
       
       try {
-        recommendRes = await api.get('/api/recommend/');
+        recommendRes = await api.get('/api/recommend/', {
+          params: userPreferredSubject && userPreferredSubject !== 'general' ? { subject: userPreferredSubject } : {}
+        });
       } catch (error) {
         console.error('Recommendations API error:', error);
         recommendRes = { data: { recommendations: 'No recommendations available.' } };
@@ -377,10 +379,17 @@ const ProgressDashboard = ({ setShowProgressModal, setCurrentView }) => {
 
         {/* Recommendations */}
         <div className="mt-6 bg-gradient-to-r from-blue-600/20 to-purple-600/20 p-4 rounded-lg border border-blue-500/30">
-          <h3 className="text-xl font-semibold text-white mb-3 flex items-center">
-            <MdTrendingUp className="mr-2 text-blue-400" />
-            AI Recommendations
-          </h3>
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-xl font-semibold text-white flex items-center">
+              <MdTrendingUp className="mr-2 text-blue-400" />
+              AI Recommendations
+            </h3>
+            {userPreferredSubject && userPreferredSubject !== 'general' && (
+              <span className="text-xs bg-blue-500/30 px-3 py-1 rounded-full text-blue-300">
+                Focus: {userPreferredSubject.charAt(0).toUpperCase() + userPreferredSubject.slice(1)}
+              </span>
+            )}
+          </div>
           <p className="text-gray-200 leading-relaxed">{recommendations}</p>
         </div>
 

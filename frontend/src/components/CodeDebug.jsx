@@ -3,6 +3,7 @@ import Editor from '@monaco-editor/react';
 import { toast } from 'react-toastify';
 import api from '../services/api';
 import { formatDateTime } from '../utils/timeUtils';
+import MessageRenderer from './MessageRenderer';
 
 const CodeDebug = () => {
   const [codeInput, setCodeInput] = useState('');
@@ -105,21 +106,21 @@ const CodeDebug = () => {
   return (
     <div className="h-screen flex flex-col bg-gray-900 text-white overflow-hidden">
       {/* Header */}
-      <header className="flex-shrink-0 p-3 lg:p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white font-bold flex justify-between items-center">
+      <header className="flex-shrink-0 px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 text-white flex justify-between items-center shadow-sm">
         <div>
-          <h1 className="text-lg lg:text-xl">Code Debugger</h1>
-          <p className="text-xs lg:text-sm opacity-90">Analyze, debug, and improve your code</p>
+          <h1 className="text-base font-semibold">Code Debugger</h1>
+          <p className="text-xs opacity-80">Analyze and improve your code</p>
         </div>
         <div className="flex items-center space-x-2">
           <button
             onClick={() => setShowHistory(!showHistory)}
-            className="bg-white/20 hover:bg-white/30 px-2 lg:px-4 py-1 lg:py-2 rounded-lg transition-colors text-xs lg:text-sm min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors text-xs"
           >
             {showHistory ? 'Hide' : 'History'}
           </button>
           <button
             onClick={clearCodeUI}
-            className="bg-white/20 hover:bg-white/30 px-2 lg:px-4 py-1 lg:py-2 rounded-lg transition-colors text-xs lg:text-sm min-h-[44px] min-w-[44px] flex items-center justify-center"
+            className="bg-white/20 hover:bg-white/30 px-3 py-1.5 rounded-lg transition-colors text-xs"
           >
             Clear
           </button>
@@ -367,10 +368,8 @@ const CodeDebug = () => {
             
             <div className="flex-1 bg-gray-800 rounded-lg p-4 overflow-y-auto custom-scroll mobile-scroll min-h-[300px] lg:min-h-0">
               {(showRoman ? debugResponseRoman : debugResponse) ? (
-                <div className="prose prose-invert max-w-none">
-                  <pre className="whitespace-pre-wrap text-sm lg:text-base text-gray-100 leading-relaxed">
-                    {showRoman ? debugResponseRoman : debugResponse}
-                  </pre>
+                <div className="text-gray-100">
+                  <MessageRenderer content={showRoman ? debugResponseRoman : debugResponse} />
                 </div>
               ) : (
                 <div className="flex items-center justify-center h-full text-gray-400">
