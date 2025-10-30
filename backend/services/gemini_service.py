@@ -7,6 +7,19 @@ import time
 from typing import Optional, Dict, List
 from dotenv import load_dotenv
 
+# Optional RAG optimization (graceful fallback if not available)
+try:
+    import numpy as np
+    from sklearn.feature_extraction.text import TfidfVectorizer
+    from sklearn.metrics.pairwise import cosine_similarity
+    import pickle
+    SKLEARN_AVAILABLE = True
+    print("✅ Optimized RAG enabled (TF-IDF semantic search)")
+except ImportError as e:
+    SKLEARN_AVAILABLE = False
+    print(f"⚠️  Optimized RAG disabled (using basic search): {e}")
+    print("   Install scikit-learn for better performance: pip install scikit-learn")
+
 # Load environment variables
 load_dotenv()
 
@@ -19,13 +32,25 @@ genai.configure(api_key=GEMINI_API_KEY)
 
 class GeminiService:
     def __init__(self):
+        genai.configure(api_key=GEMINI_API_KEY)
         self.model = genai.GenerativeModel('gemini-2.0-flash-exp')
         self.safety_prompts = ["kill", "bomb", "hate", "illegal", "hack", "drug"]
         self.datasets = self.load_datasets()
         self.fallback_responses = self.load_fallback_responses()
+        
+        # Initialize optimized RAG components (if available)
+        self.vectorizers = {}
+        self.tfidf_matrices = {}
+        if SKLEARN_AVAILABLE:
+            try:
+                self.initialize_rag()
+            except Exception as e:
+                print(f"⚠️  RAG initialization failed, using basic search: {e}")
+                self.vectorizers = {}
+                self.tfidf_matrices = {}
 
     def load_datasets(self) -> Dict[str, List[Dict]]:
-        """Load educational datasets for context."""
+        """Load ALL educational datasets for optimized RAG."""
         datasets = {}
         base_path = "datasets/"
         
@@ -50,9 +75,59 @@ class GeminiService:
                             continue
             
             if loaded:
-                datasets[subject] = loaded[:100]  # Limit to 100 examples for faster processing
+                # Load ALL examples for better RAG (not just 100!)
+                datasets[subject] = loaded  # Use all data!
+                print(f"Loaded {len(loaded)} examples for {subject}")
         
         return datasets
+    
+    def initialize_rag(self):
+        """Initialize TF-IDF based RAG for fast semantic search."""
+        if not SKLEARN_AVAILABLE:
+            print("⚠️  Scikit-learn not available, skipping RAG optimization")
+            return
+        
+        for subject, data in self.datasets.items():
+            if not data:
+                continue
+            
+            cache_file = f"datasets/{subject}/rag_cache.pkl"
+            
+            try:
+                # Try to load from cache
+                if os.path.exists(cache_file):
+                    with open(cache_file, 'rb') as f:
+                        cache = pickle.load(f)
+                        self.vectorizers[subject] = cache['vectorizer']
+                        self.tfidf_matrices[subject] = cache['matrix']
+                    print(f"✅ Loaded RAG cache for {subject}")
+                else:
+                    # Create TF-IDF vectors
+                    texts = [f"{ex['prompt']} {ex['answer']}" for ex in data]
+                    vectorizer = TfidfVectorizer(
+                        max_features=1000,
+                        stop_words='english',
+                        ngram_range=(1, 2),  # Include bigrams for better matching
+                        min_df=2,
+                        max_df=0.8
+                    )
+                    tfidf_matrix = vectorizer.fit_transform(texts)
+                    
+                    self.vectorizers[subject] = vectorizer
+                    self.tfidf_matrices[subject] = tfidf_matrix
+                    
+                    # Cache for next startup (faster!)
+                    with open(cache_file, 'wb') as f:
+                        pickle.dump({
+                            'vectorizer': vectorizer,
+                            'matrix': tfidf_matrix
+                        }, f)
+                    print(f"✅ Created and cached RAG for {subject} ({len(data)} examples)")
+            except Exception as e:
+                print(f"⚠️  RAG initialization failed for {subject}: {e}")
+                # Fallback to basic method
+                self.vectorizers[subject] = None
+                self.tfidf_matrices[subject] = None
 
     def load_fallback_responses(self) -> Dict[str, List[str]]:
         """Load fallback responses for when API quota is exceeded."""
@@ -94,28 +169,73 @@ class GeminiService:
             ]
         }
 
-    def retrieve_context(self, subject: str, prompt: str, max_chars: int = 800) -> str:
-        """Retrieve relevant context from datasets."""
+    def retrieve_context(self, subject: str, prompt: str, max_chars: int = 1500, top_k: int = 3) -> str:
+        """Optimized RAG: Semantic search using TF-IDF across ALL dataset examples."""
         try:
-            data = self.datasets.get(subject.lower()) or []
+            subject_lower = subject.lower()
+            data = self.datasets.get(subject_lower) or []
+            
             if not data:
                 return ""
             
+            # Use TF-IDF semantic search if available
+            if SKLEARN_AVAILABLE and subject_lower in self.vectorizers and self.vectorizers[subject_lower] is not None:
+                try:
+                    # Transform query to TF-IDF vector
+                    query_vec = self.vectorizers[subject_lower].transform([prompt])
+                    
+                    # Calculate cosine similarity with ALL examples (FAST!)
+                    similarities = cosine_similarity(query_vec, self.tfidf_matrices[subject_lower])[0]
+                    
+                    # Get top K most similar indices
+                    top_indices = similarities.argsort()[-top_k:][::-1]
+                    
+                    # Build context from top matches
+                    selected = []
+                    total = 0
+                    
+                    for idx in top_indices:
+                        if idx >= len(data):
+                            continue
+                        ex = data[idx]
+                        chunk = f"Q: {ex.get('prompt','').strip()}\nA: {ex.get('answer','').strip()}"
+                        if total + len(chunk) > max_chars:
+                            # Truncate answer to fit
+                            remaining = max_chars - total
+                            if remaining > 100:  # Only add if meaningful space left
+                                truncated = chunk[:remaining] + "..."
+                                selected.append(truncated)
+                            break
+                        selected.append(chunk)
+                        total += len(chunk)
+                    
+                    return "\n\n".join(selected)
+                    
+                except Exception as e:
+                    print(f"TF-IDF search failed: {e}, falling back to token matching")
+                    # Fall through to basic method
+            
+            # Fallback: Enhanced token-based search (better than before)
             query_tokens = set(re.findall(r"[a-zA-Z0-9_]+", prompt.lower()))
             scored = []
             
-            for ex in data[:50]:  # Limit for faster processing
+            # Search ALL data (not just 50!)
+            for i, ex in enumerate(data):
                 text = f"{ex.get('prompt','')}\n{ex.get('answer','')}".lower()
                 tokens = set(re.findall(r"[a-zA-Z0-9_]+", text))
-                score = len(query_tokens & tokens)
-                if score:
+                
+                # Better scoring: weighted by uniqueness
+                common = query_tokens & tokens
+                if common:
+                    # Score by TF-IDF style: rarer words = higher score
+                    score = sum(1.0 / (1 + text.count(word)) for word in common)
                     scored.append((score, ex))
             
             scored.sort(key=lambda x: x[0], reverse=True)
             selected = []
             total = 0
             
-            for _, ex in scored[:2]:  # Limit to 2 examples
+            for _, ex in scored[:top_k]:  # Top K examples
                 chunk = f"Q: {ex.get('prompt','').strip()}\nA: {ex.get('answer','').strip()}"
                 if total + len(chunk) > max_chars:
                     break
@@ -123,7 +243,8 @@ class GeminiService:
                 total += len(chunk)
             
             return "\n\n".join(selected)
-        except Exception:
+        except Exception as e:
+            print(f"Context retrieval error: {e}")
             return ""
 
     def is_safe(self, prompt: str) -> bool:
@@ -132,16 +253,35 @@ class GeminiService:
 
     def detect_language(self, prompt: str) -> str:
         """Detect if user is using Roman Urdu or English."""
-        lowered = prompt.lower()
+        lowered = prompt.lower().strip()
         
+        # Roman Urdu specific words (words that ONLY appear in Roman Urdu, not English)
         roman_urdu_markers = [
-            "kya", "kyun", "kais", "kaise", "krdo", "kerdo", "mujhe", "ap", "aap",
-            "tum", "hain", "hun", "hy", "ha", "kia", "kerna", "krna", "sahi",
-            "galat", "masla", "problem", "samjha", "btao", "batao", "seekho", "seekhna",
-            "detail", "tafsil", "kaise seekho", "kesi seekho", "batao", "btao"
+            "kya", "kyun", "kaise", "kese", "krdo", "kerdo", "kro", "kero",
+            "mujhe", "mujhy", "ap", "aap", "apko", "apka",
+            "tum", "tumhe", "tumhara",
+            "hain", "hun", "ho", "hy", "hai", "hoon",
+            "kia", "kerna", "krna", "karna", "kren", "karen",
+            "sahi", "galat", "theek", "thik",
+            "masla", "mushkil",
+            "samjha", "samjho", "samajh",
+            "btao", "batao", "bata", "btayen", "bataye",
+            "seekho", "seekhna", "sikho", "sikhna",
+            "tafsil", "tafseel",
+            "matlab", "mtlb", "yani",
+            "achha", "acha", "theek",
+            "chahiye", "chaiye", "chaye",
+            "sy", "se", "ka", "ki", "ko"
         ]
         
-        return "Roman Urdu" if any(w in lowered for w in roman_urdu_markers) else "English"
+        # Count Roman Urdu words
+        words = lowered.split()
+        roman_count = sum(1 for word in words if any(marker == word or word.startswith(marker) for marker in roman_urdu_markers))
+        
+        # If more than 20% words are Roman Urdu markers, it's Roman Urdu
+        threshold = max(1, len(words) * 0.2)  # At least 1 word or 20% of words
+        
+        return "Roman Urdu" if roman_count >= threshold else "English"
 
     def get_fallback_response(self, prompt: str, subject: str = "general") -> str:
         """Get a fallback response when API quota is exceeded."""
@@ -253,13 +393,16 @@ IMPORTANT INSTRUCTIONS:
 5. Keep responses concise for simple questions
 6. Do NOT repeat instructions or add meta-commentary
 7. Focus on the student's learning needs
+8. **CRITICAL**: Provide COMPLETE response - do NOT truncate or stop mid-sentence!
 
-{"Context (if relevant):" if context else ""}
+{"Context from educational examples:" if context else ""}
 {context if context else ""}
 
-{"Keep response brief (1-2 sentences)" if is_short else "Provide detailed step-by-step explanation with examples in markdown format" if is_detailed else "Provide clear, helpful explanation using markdown formatting"}
+{"Keep response brief (1-2 sentences)" if is_short else "Provide COMPLETE detailed step-by-step explanation with examples in markdown format. Finish all sections completely!" if is_detailed else "Provide clear, helpful COMPLETE explanation using markdown formatting"}
 
-Student Question: {prompt}"""
+Student Question: {prompt}
+
+**Remember**: Complete your entire response, do not stop in the middle!"""
 
         # Retry mechanism with exponential backoff
         for attempt in range(max_retries + 1):
@@ -268,11 +411,17 @@ Student Question: {prompt}"""
                 response = self.model.generate_content(
                     system_prompt,
                     generation_config=genai.types.GenerationConfig(
-                        max_output_tokens=800 if is_short else (2000 if is_detailed else 1500),
+                        max_output_tokens=8192,  # Maximum allowed by Gemini
                         temperature=0.7,
-                        top_p=0.8,
+                        top_p=0.95,
                         top_k=40,
-                    )
+                    ),
+                    safety_settings={
+                        'HARASSMENT': 'block_none',
+                        'HATE': 'block_none', 
+                        'SEXUAL': 'block_none',
+                        'DANGEROUS': 'block_none'
+                    }
                 )
                 
                 result = response.text.strip()
@@ -287,22 +436,30 @@ Student Question: {prompt}"""
                 cleaned = "\n".join(lines).strip()
                 
                 # If detailed was requested but answer is too short, enhance it
-                if is_detailed and len(cleaned.split()) < 50:
+                if is_detailed and len(cleaned.split()) < 80:
                     try:
                         enhance_prompt = f"""Enhance this answer to be more detailed and educational. 
-                        Provide 5-8 numbered steps with concrete actions. 
+                        Provide COMPLETE detailed explanation with 5-10 numbered steps.
                         Keep the same language ({reply_language}).
+                        
+                        **CRITICAL**: Provide COMPLETE enhanced response, do not truncate!
                         
                         Original answer: {cleaned}
                         
-                        Enhanced detailed answer:"""
+                        Enhanced COMPLETE detailed answer:"""
                         
                         enhanced = self.model.generate_content(
                             enhance_prompt,
                             generation_config=genai.types.GenerationConfig(
-                                max_output_tokens=1500,
+                                max_output_tokens=8192,
                                 temperature=0.6,
-                            )
+                            ),
+                            safety_settings={
+                                'HARASSMENT': 'block_none',
+                                'HATE': 'block_none',
+                                'SEXUAL': 'block_none',
+                                'DANGEROUS': 'block_none'
+                            }
                         )
                         
                         enhanced_text = enhanced.text.strip()
@@ -380,9 +537,15 @@ Detailed explanation of changes made and why.
             response = self.model.generate_content(
                 prompt,
                 generation_config=genai.types.GenerationConfig(
-                    max_output_tokens=3000,
+                    max_output_tokens=8192,
                     temperature=0.3,
-                )
+                ),
+                safety_settings={
+                    'HARASSMENT': 'block_none',
+                    'HATE': 'block_none',
+                    'SEXUAL': 'block_none',
+                    'DANGEROUS': 'block_none'
+                }
             )
             
             analysis = response.text.strip()
@@ -409,9 +572,15 @@ Provide the COMPLETE detailed analysis in Roman Urdu with markdown formatting.
                 roman_response = self.model.generate_content(
                     roman_prompt,
                     generation_config=genai.types.GenerationConfig(
-                        max_output_tokens=3000,
+                        max_output_tokens=8192,
                         temperature=0.4,
-                    )
+                    ),
+                    safety_settings={
+                        'HARASSMENT': 'block_none',
+                        'HATE': 'block_none',
+                        'SEXUAL': 'block_none',
+                        'DANGEROUS': 'block_none'
+                    }
                 )
                 roman_analysis = roman_response.text.strip()
             except Exception:

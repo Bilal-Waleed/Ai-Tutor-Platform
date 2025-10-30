@@ -27,8 +27,9 @@ A comprehensive AI-powered educational platform that provides personalized learn
 - **Session Management**: Organized learning sessions by subject and topic
 - **Code Editor**: Monaco editor with syntax highlighting and analysis
 - **Roman Urdu Translation**: Optional explanations in Roman Urdu
-- **Performance Optimization**: Optimized for 16GB RAM systems
-- **Real-time Recommendations**: Dynamic learning suggestions
+- **Optimized RAG System**: TF-IDF semantic search across 28,000+ examples with caching
+- **Performance Optimization**: React.memo, code splitting, hardware acceleration for 60 FPS
+- **Real-time Recommendations**: Dynamic learning suggestions with subject-specific focus
 
 ## 🏗️ Architecture
 
@@ -185,7 +186,9 @@ python scripts/performance_test.py
 - **PostgreSQL**: Robust relational database
 - **SQLAlchemy**: Python ORM
 - **JWT**: Authentication and authorization
-- **Google Gemini AI**: Advanced language model
+- **Google Gemini AI**: Advanced language model (Gemini 2.0 Flash)
+- **Scikit-learn**: TF-IDF based semantic search for optimized RAG
+- **Educational Datasets**: 28,090 preprocessed examples (95 MB)
 
 ### Frontend
 - **React 18**: Modern UI library

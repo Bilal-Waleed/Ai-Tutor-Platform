@@ -52,16 +52,28 @@ const CodeBlock = memo(({ language, value }) => {
               borderTop: 'none',
               padding: '1rem',
               overflowX: 'auto',
+              maxWidth: '100%',
             }}
           >
             {tokens.map((line, i) => (
-              <div key={i} {...getLineProps({ line })}>
-                <span className="inline-block w-8 text-right mr-4 text-gray-600 select-none">
+              <div 
+                key={i} 
+                {...getLineProps({ line })}
+                style={{ 
+                  overflowWrap: 'break-word',
+                  wordBreak: 'break-all',
+                  whiteSpace: 'pre-wrap',
+                  maxWidth: '100%'
+                }}
+              >
+                <span className="inline-block w-8 text-right mr-4 text-gray-600 select-none" style={{ flexShrink: 0 }}>
                   {i + 1}
                 </span>
-                {line.map((token, key) => (
-                  <span key={key} {...getTokenProps({ token })} />
-                ))}
+                <span style={{ flex: 1, minWidth: 0 }}>
+                  {line.map((token, key) => (
+                    <span key={key} {...getTokenProps({ token })} />
+                  ))}
+                </span>
               </div>
             ))}
           </pre>

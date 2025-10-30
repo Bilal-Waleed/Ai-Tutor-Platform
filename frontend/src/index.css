@@ -176,25 +176,34 @@ body {
 
 /* Markdown & Code Block Styling */
 .prose {
-	max-width: none;
+	max-width: 100%;
 	color: #e5e7eb;
+	overflow-wrap: break-word;
+	word-wrap: break-word;
 }
 
 .prose code {
 	font-family: 'Fira Code', 'Consolas', 'Monaco', 'Courier New', monospace;
 	font-size: 0.875rem;
+	max-width: 100%;
 }
 
 .prose pre {
 	margin: 0 !important;
 	border-radius: 0.5rem;
 	overflow-x: auto;
+	max-width: 100%;
+	box-sizing: border-box;
 }
 
 .prose pre code {
 	font-size: 0.875rem;
 	line-height: 1.5;
 	display: block;
+	white-space: pre-wrap;
+	word-break: break-all;
+	overflow-wrap: break-word;
+	max-width: 100%;
 }
 
 /* Selection Color */
@@ -371,6 +380,23 @@ input:focus {
 .code-block-container {
 	position: relative;
 	margin: 1rem 0;
+	max-width: 100%;
+	overflow: hidden;
+}
+
+/* Prevent code blocks from breaking layout */
+pre {
+	max-width: 100%;
+	overflow-x: auto;
+	overflow-y: hidden;
+}
+
+pre code {
+	display: block;
+	max-width: 100%;
+	overflow-wrap: break-word;
+	word-break: break-all;
+	white-space: pre-wrap;
 }
 
 /* Copy button for code blocks */
