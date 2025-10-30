@@ -27,6 +27,8 @@ A comprehensive AI-powered educational platform that provides personalized learn
 - **Session Management**: Organized learning sessions by subject and topic
 - **Code Editor**: Monaco editor with syntax highlighting and analysis
 - **Roman Urdu Translation**: Optional explanations in Roman Urdu
+- **Voice Interaction**: Speech-to-text input and text-to-speech for AI responses (browser-based, free)
+- **Emotion-Aware Tutoring**: Detects user sentiment and adapts response tone (supportive, challenging, etc.)
 - **Optimized RAG System**: TF-IDF semantic search across 28,000+ examples with caching
 - **Performance Optimization**: React.memo, code splitting, hardware acceleration for 60 FPS
 - **Real-time Recommendations**: Dynamic learning suggestions with subject-specific focus
@@ -128,15 +130,18 @@ npm run dev
 ### Key Features Usage
 
 #### 💬 Chat & Q&A
-- Ask questions in English or Roman Urdu
+- Ask questions in English or Roman Urdu (auto-detected)
+- Voice input support - speak your questions (browser-based)
+- Listen to AI responses with text-to-speech
 - Get beautifully formatted responses with markdown support
+- Emotion-aware responses adapt to your learning state (frustrated, confident, curious)
 - Syntax-highlighted code blocks with copy buttons
 - Edit and copy your messages with intuitive controls
 - Step-by-step explanations with proper headings
 - Independent subject selection per chat session
 - Request examples and practice problems
 - Follow up with clarifying questions
-- Complete responses without truncation (up to 2000 tokens)
+- Complete responses without truncation (up to 8192 tokens)
 
 #### 💻 Code Debugging
 - Write code in Python, JavaScript, or Java
@@ -276,13 +281,15 @@ python scripts/performance_test.py
 4. **ChatHistory.jsx**: Message display with enhanced formatting
 5. **MessageRenderer.jsx**: Markdown rendering with syntax highlighting
 6. **UserMessage.jsx**: User message with edit/copy features
-7. **AssistantMessage.jsx**: AI message with formatted responses
-8. **MessageBar.jsx**: Input interface for questions
-9. **CodeDebug.jsx**: Code editor with AI analysis
-10. **ProgressDashboard.jsx**: Analytics and progress visualization
-11. **SubjectSelector.jsx**: Subject selection modal
-12. **HistoryPanel.jsx**: Session history management
-13. **RecommendationsWidget.jsx**: AI learning suggestions
+7. **AssistantMessage.jsx**: AI message with formatted responses and TTS
+8. **MessageBar.jsx**: Input interface with voice support
+9. **VoiceInput.jsx**: Speech-to-text for voice questions
+10. **TextToSpeech.jsx**: Read AI responses aloud
+11. **CodeDebug.jsx**: Code editor with AI analysis
+12. **ProgressDashboard.jsx**: Analytics and progress visualization
+13. **SubjectSelector.jsx**: Subject selection modal
+14. **HistoryPanel.jsx**: Session history management
+15. **RecommendationsWidget.jsx**: AI learning suggestions
 
 ### Quiz System Components
 11. **QuizSystem.jsx**: Main quiz interface with AI recommendations

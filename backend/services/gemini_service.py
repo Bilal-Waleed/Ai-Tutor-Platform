@@ -4,7 +4,7 @@ import re
 import json
 import random
 import time
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Tuple
 from dotenv import load_dotenv
 
 # Optional RAG optimization (graceful fallback if not available)
@@ -250,6 +250,89 @@ class GeminiService:
     def is_safe(self, prompt: str) -> bool:
         """Check if prompt is safe for educational use."""
         return not any(word in prompt.lower() for word in self.safety_prompts)
+    
+    def analyze_emotion(self, text: str) -> Tuple[str, float]:
+        """
+        Analyze user emotion from message.
+        Returns: (emotion, confidence)
+        """
+        text_lower = text.lower()
+        
+        # Emotion patterns
+        patterns = {
+            'frustrated': ['dont understand', "don't understand", 'confused', 'stuck', 'help',
+                          'difficult', 'hard', 'cant', "can't", 'samajh nahi', 'mushkil', 'masla'],
+            'confident': ['easy', 'got it', 'understand', 'clear', 'makes sense',
+                         'more', 'advanced', 'samajh gaya', 'theek', 'achha'],
+            'curious': ['how', 'why', 'what', 'kaise', 'kya', 'kyun'],
+            'positive': ['thank', 'thanks', 'great', 'awesome', 'shukriya'],
+        }
+        
+        scores = {emotion: 0 for emotion in patterns}
+        
+        for emotion, keywords in patterns.items():
+            for keyword in keywords:
+                if keyword in text_lower:
+                    scores[emotion] += 1
+        
+        # Question mark = curious
+        if '?' in text:
+            scores['curious'] += 1
+        
+        # Error keywords = frustrated
+        if any(word in text_lower for word in ['error', 'bug', 'wrong', 'issue']):
+            scores['frustrated'] += 1
+        
+        if max(scores.values()) == 0:
+            return 'neutral', 0.5
+        
+        primary = max(scores, key=scores.get)
+        total = sum(scores.values())
+        confidence = scores[primary] / total if total > 0 else 0.5
+        
+        return primary, confidence
+    
+    def get_emotion_instructions(self, emotion: str, confidence: float) -> str:
+        """Get tone instructions based on detected emotion."""
+        if confidence < 0.3:
+            return ""
+        
+        instructions = {
+            'frustrated': """
+STUDENT EMOTIONAL STATE: Frustrated/Struggling (needs encouragement)
+TONE ADJUSTMENT: Be extra supportive, patient, and encouraging
+- Start with: "I understand this can be challenging. Let me help you with a simpler explanation."
+- Break down into VERY simple steps
+- Use more examples and analogies
+- Be reassuring and positive
+- Avoid complex terminology""",
+            
+            'confident': """
+STUDENT EMOTIONAL STATE: Confident (ready for more)
+TONE ADJUSTMENT: Provide advanced content and challenges
+- Start with: "Great! Since you understand the basics, let's explore advanced concepts."
+- Include edge cases and best practices
+- Suggest optimization techniques
+- Add challenging examples
+- Encourage experimentation""",
+            
+            'curious': """
+STUDENT EMOTIONAL STATE: Curious (wants to learn deeply)
+TONE ADJUSTMENT: Be thorough and exploratory
+- Provide comprehensive explanations
+- Include "why" and "how it works internally"
+- Add related concepts
+- Encourage further questions""",
+            
+            'positive': """
+STUDENT EMOTIONAL STATE: Happy/Satisfied
+TONE ADJUSTMENT: Maintain positive momentum
+- Acknowledge progress
+- Suggest next learning steps
+- Build on success""",
+        }
+        
+        return instructions.get(emotion, "")
 
     def detect_language(self, prompt: str) -> str:
         """Detect if user is using Roman Urdu or English."""
@@ -258,7 +341,7 @@ class GeminiService:
         # Roman Urdu specific words (words that ONLY appear in Roman Urdu, not English)
         roman_urdu_markers = [
             "kya", "kyun", "kaise", "kese", "krdo", "kerdo", "kro", "kero",
-            "mujhe", "mujhy", "ap", "aap", "apko", "apka",
+            "mujhe", "mujhy", "mera", "meri", "mere", "ap", "aap", "apko", "apka",
             "tum", "tumhe", "tumhara",
             "hain", "hun", "ho", "hy", "hai", "hoon",
             "kia", "kerna", "krna", "karna", "kren", "karen",
@@ -271,15 +354,16 @@ class GeminiService:
             "matlab", "mtlb", "yani",
             "achha", "acha", "theek",
             "chahiye", "chaiye", "chaye",
-            "sy", "se", "ka", "ki", "ko"
+            "sy", "se", "ka", "ki", "ko", "yr", "yar", "dekh", "dekho", 
+            "anlyze", "analyze", "ker", "kro", "kerna", "krna"
         ]
         
         # Count Roman Urdu words
         words = lowered.split()
         roman_count = sum(1 for word in words if any(marker == word or word.startswith(marker) for marker in roman_urdu_markers))
         
-        # If more than 20% words are Roman Urdu markers, it's Roman Urdu
-        threshold = max(1, len(words) * 0.2)  # At least 1 word or 20% of words
+        # If more than 15% words are Roman Urdu markers, it's Roman Urdu (reduced from 20%)
+        threshold = max(1, len(words) * 0.15)  # At least 1 word or 15% of words
         
         return "Roman Urdu" if roman_count >= threshold else "English"
 
@@ -365,6 +449,10 @@ class GeminiService:
         detected_lang = self.detect_language(prompt)
         reply_language = detected_lang if language == "auto" else language
 
+        # Analyze emotion for adaptive tutoring
+        emotion, emotion_confidence = self.analyze_emotion(prompt)
+        emotion_instructions = self.get_emotion_instructions(emotion, emotion_confidence)
+
         # Get context
         context = self.retrieve_context(subject, prompt)
 
@@ -377,6 +465,8 @@ class GeminiService:
 
         # Build system prompt
         system_prompt = f"""You are an expert {subject} tutor. Your role is to provide clear, educational responses.
+
+{emotion_instructions}
 
 IMPORTANT INSTRUCTIONS:
 1. Reply ONLY in {reply_language} - use Latin script for Roman Urdu, NO Arabic/Urdu script

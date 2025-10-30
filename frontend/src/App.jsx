@@ -252,14 +252,14 @@ function App() {
     // Don't affect current chat subject
   };
 
-  const handleEditMessage = useCallback((index, newContent) => {
-    // Update message locally
-    setMessages(prev => {
-      const updated = [...prev];
-      updated[index] = { ...updated[index], content: newContent };
-      return updated;
-    });
-  }, []);
+  const handleEditMessage = useCallback(async (index, newContent) => {
+    // Truncate messages after the edited message (remove old response)
+    setMessages(prev => prev.slice(0, index));
+    
+    // Re-send the message to get a new response (GPT-like behavior)
+    // sendMessage will add the message itself, so no need to add here
+    await sendMessage(newContent);
+  }, [sendMessage]);
 
   if (loading) {
     return (

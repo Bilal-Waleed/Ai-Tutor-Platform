@@ -1,10 +1,17 @@
 // src/components/MessageBar.jsx (Enhanced with better UI and functionality)
 import React, { useState } from 'react';
-import { Send, Paperclip, Mic } from 'lucide-react';
+import { Send, Paperclip } from 'lucide-react';
 import { toast } from 'react-toastify';
+import VoiceInput from './VoiceInput';
 
 const MessageBar = ({ input, setInput, sendMessage }) => {
   const [isTyping, setIsTyping] = useState(false);
+  
+  const handleVoiceTranscript = (transcript) => {
+    setInput(transcript);
+    setIsTyping(true);
+    toast.success('Voice input ready! Click send or edit the text.');
+  };
 
   const handleSend = async () => {
     if (input.trim()) {
@@ -39,9 +46,7 @@ const MessageBar = ({ input, setInput, sendMessage }) => {
         </button>
 
         {/* Voice Input Button */}
-        <button className="p-2 text-gray-400 hover:text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
-          <Mic size={18} className="lg:w-5 lg:h-5" />
-        </button>
+        <VoiceInput onTranscript={handleVoiceTranscript} disabled={false} />
 
         {/* Text Input */}
         <div className="flex-1 relative">

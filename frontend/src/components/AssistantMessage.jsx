@@ -2,6 +2,7 @@ import React, { useState, memo } from 'react';
 import { Bot, Copy, Check } from 'lucide-react';
 import { toast } from 'react-toastify';
 import MessageRenderer from './MessageRenderer';
+import TextToSpeech from './TextToSpeech';
 
 const AssistantMessage = memo(({ content, timestamp }) => {
   const [copied, setCopied] = useState(false);
@@ -27,7 +28,7 @@ const AssistantMessage = memo(({ content, timestamp }) => {
             <MessageRenderer content={content} />
           </div>
 
-          {/* Timestamp and Copy Button */}
+          {/* Timestamp, Listen, and Copy Button */}
           <div className="flex items-center space-x-2 px-2">
             {timestamp && (
               <div className="text-xs text-gray-500">
@@ -37,6 +38,7 @@ const AssistantMessage = memo(({ content, timestamp }) => {
                 })}
               </div>
             )}
+            <TextToSpeech text={content} />
             <button
               onClick={handleCopyAll}
               className="flex items-center space-x-1 text-xs text-purple-400 hover:text-purple-300 transition-colors"
