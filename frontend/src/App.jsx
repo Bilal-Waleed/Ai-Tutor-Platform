@@ -190,11 +190,17 @@ function App() {
       }
       const sessionRes = await api.get(`/api/sessions/${sessionId}`);
       setCurrentSubject(sessionRes.data.subject);
+      
+      // Persist the sessionId explicitly (important for new chats)
+      persistData(sessionId, sessionRes.data.subject);
     } catch (err) {
       toast.error('Chat Error: ' + (err.response?.data?.detail || err.message));
+      // If session was created, persist it even on error
+      if (sessionId) {
+        persistData(sessionId, currentSubject);
+      }
     } finally {
       setResponseLoading(false);
-      persistData();
     }
   }, [currentSubject, currentSessionId, sessionName]);
 
@@ -239,12 +245,14 @@ function App() {
     setSubjectModalContext('chat'); // Context: for chat
     setShowSubjectModal(true);
     
-    persistData();
+    // Clear localStorage when starting new chat (no session yet)
+    persistData(null, 'general');
   };
 
   const updateCurrentSubject = (newSubject) => {
     setCurrentSubject(newSubject);
-    persistData();
+    // Pass the newSubject explicitly to avoid state update delay
+    persistData(currentSessionId, newSubject);
   };
 
   const updateUserPreferredSubject = (newSubject) => {

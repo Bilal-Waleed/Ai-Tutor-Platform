@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Volume2, VolumeX, Pause, Play } from 'lucide-react';
 import { toast } from 'react-toastify';
 
@@ -6,19 +6,78 @@ const TextToSpeech = ({ text, autoPlay = false }) => {
   const [isSpeaking, setIsSpeaking] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [isSupported, setIsSupported] = useState(false);
+  const utteranceRef = useRef(null); // Track this component's utterance
 
   useEffect(() => {
     // Check if browser supports speech synthesis
     if ('speechSynthesis' in window) {
       setIsSupported(true);
+      
+      // Load voices (some browsers need this)
+      const loadVoices = () => {
+        window.speechSynthesis.getVoices();
+      };
+      
+      // Load voices on mount and when voices change
+      loadVoices();
+      if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+      }
     }
+    
+    // Cleanup: Stop speech when component unmounts (page change, chat change, etc.)
+    return () => {
+      // Only cancel if THIS component started speech
+      if (window.speechSynthesis && utteranceRef.current) {
+        window.speechSynthesis.cancel();
+        utteranceRef.current = null;
+      }
+    };
   }, []);
 
   useEffect(() => {
     if (autoPlay && text && isSupported) {
       speak();
     }
-  }, [text, autoPlay]);
+    
+    // Cleanup: Only stop THIS component's speech when it unmounts or text changes
+    return () => {
+      // Only cancel if THIS component is speaking
+      if (utteranceRef.current && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+        utteranceRef.current = null;
+        setIsSpeaking(false);
+        setIsPaused(false);
+      }
+    };
+  }, [text, autoPlay, isSupported]);
+
+  // Stop speech on browser refresh, close, or tab switch
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      // Stop speech when user switches to another tab (only if this component is speaking)
+      if (document.hidden && window.speechSynthesis && window.speechSynthesis.speaking && utteranceRef.current) {
+        window.speechSynthesis.cancel();
+        utteranceRef.current = null;
+        setIsSpeaking(false);
+        setIsPaused(false);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, []);
 
   const speak = () => {
     if (!isSupported) {
@@ -39,8 +98,31 @@ const TextToSpeech = ({ text, autoPlay = false }) => {
       .replace(/\n+/g, '. '); // Replace newlines with periods
 
     const utterance = new SpeechSynthesisUtterance(cleanText);
-    utterance.lang = 'en-US';
-    utterance.rate = 0.9; // Slightly slower for better comprehension
+    
+    // Store reference to this utterance
+    utteranceRef.current = utterance;
+    
+    // Get available voices
+    const voices = window.speechSynthesis.getVoices();
+    
+    // Try to find the best voice for Roman Urdu
+    // Priority: Hindi > Urdu > English(India) > English(UK) > English(US)
+    let selectedVoice = voices.find(voice => voice.lang.includes('hi')) || // Hindi
+                       voices.find(voice => voice.lang.includes('ur')) || // Urdu
+                       voices.find(voice => voice.lang === 'en-IN') ||    // English India
+                       voices.find(voice => voice.lang === 'en-GB') ||    // English UK (clearer pronunciation)
+                       voices.find(voice => voice.lang === 'en-US');      // English US fallback
+    
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      utterance.lang = selectedVoice.lang;
+    } else {
+      // Fallback to en-US if no voice found
+      utterance.lang = 'en-US';
+    }
+    
+    // Slower rate for better comprehension of Roman Urdu
+    utterance.rate = 0.85; // Much slower for clarity
     utterance.pitch = 1.0;
     utterance.volume = 1.0;
 
@@ -52,12 +134,14 @@ const TextToSpeech = ({ text, autoPlay = false }) => {
     utterance.onend = () => {
       setIsSpeaking(false);
       setIsPaused(false);
+      utteranceRef.current = null;
     };
 
     utterance.onerror = (event) => {
       console.error('Speech error:', event);
       setIsSpeaking(false);
       setIsPaused(false);
+      utteranceRef.current = null;
     };
 
     window.speechSynthesis.speak(utterance);
@@ -78,7 +162,10 @@ const TextToSpeech = ({ text, autoPlay = false }) => {
   };
 
   const stop = () => {
-    window.speechSynthesis.cancel();
+    if (utteranceRef.current) {
+      window.speechSynthesis.cancel();
+      utteranceRef.current = null;
+    }
     setIsSpeaking(false);
     setIsPaused(false);
   };

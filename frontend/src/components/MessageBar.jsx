@@ -10,7 +10,7 @@ const MessageBar = ({ input, setInput, sendMessage }) => {
   const handleVoiceTranscript = (transcript) => {
     setInput(transcript);
     setIsTyping(true);
-    toast.success('Voice input ready! Click send or edit the text.');
+    // Removed toast notification - user doesn't want toast here
   };
 
   const handleSend = async () => {
